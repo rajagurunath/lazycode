@@ -578,14 +578,19 @@ class Orchestrator:
                 break
             time.sleep(next(delays))
 
-        self._emit(job_id, EventType.WAVE_COMPLETED, {"wave_id": wave_id})
-
         for result in adapter.fetch(batch_ref):
             pair = rendered.get(result.custom_id)
             if pair is None:
                 continue
             node, call = pair
             self._process_item(job_id, wave_id, node, call, result)
+
+        # WAVE_COMPLETED is emitted only AFTER every returned item has been
+        # processed (review F1): a crash mid-processing leaves the wave
+        # classified in-flight, so resume re-polls it and reprocesses
+        # idempotently (memo + applied_diffs dedupe) instead of stranding
+        # unprocessed nodes at SUBMITTED forever.
+        self._emit(job_id, EventType.WAVE_COMPLETED, {"wave_id": wave_id})
 
     def _process_item(
         self,
