@@ -558,7 +558,23 @@ class Orchestrator:
 
     def _maybe_memo_hit(self, job_id: str, node: _NodeRow, call: RenderedCall) -> bool:
         """If ``call``'s prompt already has a completed cached result, process it
-        from the memo cache instead of submitting (R10). Returns True on a hit."""
+        from the memo cache instead of submitting (R10). Returns True on a hit.
+
+        Memo-key collision across DISTINCT nodes (review item 9, assessed and
+        accepted for M0): the memo key deliberately excludes ``custom_id`` /
+        ``node_ids``, so two different nodes that render **byte-identical**
+        prompts share one cached result — the later node is served from cache,
+        its (identical) diff is found already in the ``applied_diffs`` ledger,
+        and it is marked DONE without an apply of its own. This is correct,
+        not a bug: the rendered prompt embeds the node's spec, its harvested
+        file contents, and its contract globs, so byte-identical prompts can
+        only mean *the same requested change against the same context* — the
+        change is already in the worktree, and re-applying the same diff would
+        conflict. The one intent this cannot express — N identical prompts
+        wanting N *different* samples — is exactly what ``sample_idx`` in the
+        memo key is for (§5.2 R10 / R7, M4); M0 renders everything at
+        ``sample_idx=0``, ``temperature=0.0``.
+        """
         cached = memo.get(self.store, call.memo_key)
         if cached is None or not cached.response_ref:
             return False

@@ -50,3 +50,4 @@ What doesn't work yet (by design — later milestones, Appendix B11):
 - No web UI, no desktop/Slack notifications (log line only), no `watch` TUI (M3).
 - Single provider (Anthropic) + realtime planner only — no OpenAI/Gemini/pseudo-batch adapters yet (M4).
 - `--background` daemon mode, `merge`/`cancel` commands, and GitHub Actions best-effort runner are all unimplemented (M1/M2).
+- Memo-key sharing across duplicate nodes (by design): two distinct nodes that render *byte-identical* prompts share one R10 memo entry — the second is served from cache and, its identical diff being already in the applied-diff ledger, is marked DONE without a second apply. Since the rendered prompt embeds the node's spec, harvested files, and contract globs, identical prompts always mean identical requested work at M0's `temperature=0.0`/`sample_idx=0`; deliberate N-best sampling of one prompt gets distinct `sample_idx` values in M4 (DESIGN.md §5.2 R7/R10).
