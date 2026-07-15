@@ -152,6 +152,130 @@ def test_crash_mid_result_processing_resumes_and_reprocesses_wave(git_repo: GitR
     store2.close()
 
 
+class _CrashAfterProviderAcceptAdapter(MockBatchAdapter):
+    """``submit()`` creates the provider-side batch and THEN raises once —
+    simulating a crash in the window between the provider accepting the batch
+    and the ``WAVE_SUBMITTED`` event being persisted (review F2). The batch is
+    already paid for and persists server-side."""
+
+    def __init__(self, responses) -> None:
+        super().__init__(responses)
+        self._crashed = False
+
+    def submit(self, items, idempotency_key, *, known_refs=None):
+        ref = super().submit(items, idempotency_key, known_refs=known_refs)
+        if not self._crashed:
+            self._crashed = True
+            raise RuntimeError("simulated kill -9 after provider accepted the batch")
+        return ref
+
+
+class _CrashBeforeProviderAcceptAdapter(MockBatchAdapter):
+    """``submit()`` raises once BEFORE creating any provider-side batch —
+    the request never reached the provider, so resume must submit fresh."""
+
+    def __init__(self, responses) -> None:
+        super().__init__(responses)
+        self._crashed = False
+
+    def submit(self, items, idempotency_key, *, known_refs=None):
+        if not self._crashed:
+            self._crashed = True
+            raise RuntimeError("simulated crash before the provider accepted the batch")
+        return super().submit(items, idempotency_key, known_refs=known_refs)
+
+
+def _single_gen_plan(target: str = "mod_a.py") -> Plan:
+    return Plan(
+        goal="add a constant",
+        nodes=[
+            Generate(
+                id="n1",
+                spec=f"append to {target}",
+                context_spec=ContextSpec(files=[target], repo_map=True),
+                output_contract=DiffContract(files_within=[target]),
+            )
+        ],
+    )
+
+
+def test_crash_between_submit_and_wave_submitted_adopts_orphan_batch(git_repo: GitRepo):
+    """Review F2: a crash after ``adapter.submit()`` but before the
+    ``WAVE_SUBMITTED`` event orphans a paid provider batch. Resume must
+    reconcile the WAVE_FORMED-without-WAVE_SUBMITTED wave via
+    ``adapter.find_batch(idempotency_key)``, adopt the existing batch, and
+    never create a second one."""
+    git_repo.write("mod_a.py", "A = 1\n")
+    base = git_repo.commit("init")
+    patch_a = git_repo.make_patch("mod_a.py", "A = 1\nA2 = 2\n")
+    adapter = _CrashAfterProviderAcceptAdapter({"n1": completed("n1", patch_a)})
+    cfg = SchedulerConfig()
+
+    store1 = Store.open(repo=git_repo.root)
+    orch1 = Orchestrator(store1, {"anthropic": adapter}, git_repo.root, cfg, holder_id="runner-1")
+    job_id = orch1.create_job("add a constant", _single_gen_plan(), base)
+    with pytest.raises(RuntimeError, match="after provider accepted"):
+        orch1.run_job(job_id)
+    store1.close()
+
+    # The provider-side batch exists but the event log has no WAVE_SUBMITTED.
+    assert len(adapter.submitted_batches) == 1
+
+    store2 = Store.open(repo=git_repo.root)
+    orch2 = Orchestrator(store2, {"anthropic": adapter}, git_repo.root, cfg, holder_id="runner-1")
+    result = orch2.run_job(job_id)
+
+    assert result.status == "DONE"
+    # CRITICAL: total submissions == 1 — the orphan batch was adopted, not redone.
+    assert len(adapter.submitted_batches) == 1
+
+    # The adopted batch ref was durably recorded via WAVE_SUBMITTED.
+    from lazycode.ir import EventType
+    from lazycode.store import eventlog
+
+    submitted = [
+        e for e in eventlog.read(store2, job_id) if e.type == EventType.WAVE_SUBMITTED
+    ]
+    assert len(submitted) == 1
+    assert submitted[0].payload["batch_ref"] in adapter.submitted_batches
+
+    from pathlib import Path
+
+    wt = Path(
+        store2.conn.execute(
+            "SELECT worktree_path FROM task_groups WHERE job_id = ?", (job_id,)
+        ).fetchone()["worktree_path"]
+    )
+    assert "A2 = 2" in (wt / "mod_a.py").read_text()
+    store2.close()
+
+
+def test_crash_before_provider_accept_resubmits_fresh(git_repo: GitRepo):
+    """Review F2 (reconcile miss): WAVE_FORMED with no provider-side batch —
+    ``find_batch`` returns None, so resume re-renders and submits fresh."""
+    git_repo.write("mod_a.py", "A = 1\n")
+    base = git_repo.commit("init")
+    patch_a = git_repo.make_patch("mod_a.py", "A = 1\nA2 = 2\n")
+    adapter = _CrashBeforeProviderAcceptAdapter({"n1": completed("n1", patch_a)})
+    cfg = SchedulerConfig()
+
+    store1 = Store.open(repo=git_repo.root)
+    orch1 = Orchestrator(store1, {"anthropic": adapter}, git_repo.root, cfg, holder_id="runner-1")
+    job_id = orch1.create_job("add a constant", _single_gen_plan(), base)
+    with pytest.raises(RuntimeError, match="before the provider accepted"):
+        orch1.run_job(job_id)
+    store1.close()
+    assert len(adapter.submitted_batches) == 0
+
+    store2 = Store.open(repo=git_repo.root)
+    orch2 = Orchestrator(store2, {"anthropic": adapter}, git_repo.root, cfg, holder_id="runner-1")
+    result = orch2.run_job(job_id)
+
+    assert result.status == "DONE"
+    assert len(adapter.submitted_batches) == 1
+    store2.close()
+
+
 def test_crash_after_submit_resumes_without_double_submit(git_repo: GitRepo):
     git_repo.write("mod_a.py", "A = 1\n")
     git_repo.write("mod_b.py", "B = 1\n")

@@ -133,6 +133,18 @@ class BatchAdapter(Protocol):
         """Submit ``items`` as one provider batch."""
         ...
 
+    def find_batch(self, idempotency_key: str) -> BatchRef | None:
+        """Look up a previously-created provider batch by submit idempotency key.
+
+        The crash-recovery half of submit idempotency (§7.1): the orchestrator
+        stamps ``idempotency_key`` into the provider batch's metadata at create
+        time, and on resume a WAVE_FORMED-without-WAVE_SUBMITTED wave is
+        reconciled by asking the provider whether the batch already exists —
+        found → adopt the ref (the batch is already paid for); ``None`` →
+        the submit never reached the provider, safe to submit fresh.
+        """
+        ...
+
     def poll(self, ref: BatchRef) -> BatchStatus:
         """Provider-level status + per-item-state counts."""
         ...

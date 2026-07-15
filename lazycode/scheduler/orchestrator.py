@@ -82,7 +82,7 @@ from lazycode.workspace import (
 from .config import SchedulerConfig
 from .payloads import extract_diff, extract_text, payload_usage
 from .report import write_report
-from .resume import resume_job
+from .resume import ReconcileWave, resume_job
 
 log = logging.getLogger("lazycode.scheduler")
 
@@ -249,6 +249,13 @@ class Orchestrator:
             for w in state.in_flight_waves:
                 rendered = self._render_nodes(job_id, w.node_ids)
                 self._await_and_process_wave(job_id, w.provider, w.wave_id, w.batch_ref, rendered)
+
+            # 1b. Reconcile waves FORMED but never durably SUBMITTED (review F2):
+            # a crash between adapter.submit() and the WAVE_SUBMITTED event may
+            # have orphaned a paid provider batch. Ask the provider; adopt the
+            # batch if it exists, otherwise put the nodes back on the frontier.
+            for rw in state.reconcile_waves:
+                self._reconcile_wave(job_id, rw, known_refs)
 
             # 2. Barrier-wave loop.
             waves_run = 0
@@ -486,6 +493,45 @@ class Orchestrator:
                 count += 1
         return count
 
+    def _reconcile_wave(
+        self, job_id: str, wave: "ReconcileWave", known_refs: dict[str, BatchRef]
+    ) -> None:
+        """Resolve one FORMED-but-not-SUBMITTED wave after a crash (review F2).
+
+        ``adapter.find_batch(idempotency_key)`` found the batch → adopt its ref
+        (emit WAVE_SUBMITTED durably, then await/process it as in-flight — the
+        batch is already paid for, never resubmit). Not found → the submit
+        never reached the provider: re-enqueue the nodes so the normal wave
+        loop re-renders and submits fresh.
+        """
+        adapter = self.adapters.get(wave.provider)
+        finder = getattr(adapter, "find_batch", None) if adapter is not None else None
+        batch_ref = finder(wave.idempotency_key) if finder is not None else None
+
+        if batch_ref is not None:
+            known_refs[wave.idempotency_key] = batch_ref
+            rendered = self._render_nodes(job_id, wave.node_ids)
+            submitted = WaveSubmittedPayload(
+                wave_id=wave.wave_id,
+                provider=wave.provider,
+                model=wave.model,
+                batch_ref=batch_ref.batch_id,
+                idempotency_key=wave.idempotency_key,
+                node_ids=list(wave.node_ids),
+                item_count=len(wave.node_ids),
+            )
+            self._emit(job_id, EventType.WAVE_SUBMITTED, submitted.model_dump(mode="json"))
+            self._await_and_process_wave(
+                job_id, wave.provider, wave.wave_id, batch_ref, rendered
+            )
+            return
+
+        nodes = self._load_nodes(job_id)
+        for nid in wave.node_ids:
+            node = nodes.get(nid)
+            if node is not None and node.status == NodeStatus.HARVESTED:
+                self._state_change(job_id, nid, node.status, NodeStatus.RE_ENQUEUED)
+
     def _maybe_memo_hit(self, job_id: str, node: _NodeRow, call: RenderedCall) -> bool:
         """If ``call``'s prompt already has a completed cached result, process it
         from the memo cache instead of submitting (R10). Returns True on a hit."""
@@ -518,8 +564,6 @@ class Orchestrator:
             group_nodes = [n for n in group_nodes if not self._maybe_memo_hit(job_id, n, rendered[n.id][1])]
             if not group_nodes:
                 continue
-            for n in group_nodes:
-                self._emit(job_id, EventType.NODE_HARVESTED, {"node_id": n.id})
 
             items = [rendered[n.id][1] for n in group_nodes]
             content_prefix = submit_idempotency_key(items, 0).split(":", 1)[0]
@@ -527,6 +571,10 @@ class Orchestrator:
             idem_key = submit_idempotency_key(items, flush_ordinal)
             wave_id = f"{content_prefix[:8]}-{flush_ordinal}"
 
+            # WAVE_FORMED is durably recorded — with the idempotency key and
+            # item custom_ids — BEFORE anything else happens for this wave
+            # (review F2): a crash anywhere between here and WAVE_SUBMITTED is
+            # reconciled on resume via adapter.find_batch(idempotency_key).
             self._emit(
                 job_id,
                 EventType.WAVE_FORMED,
@@ -535,9 +583,13 @@ class Orchestrator:
                     "provider": provider,
                     "model": model,
                     "node_ids": [n.id for n in group_nodes],
+                    "custom_ids": [c.custom_id for c in items],
+                    "idempotency_key": idem_key,
                     "exec_class": ExecClass.BATCH.value,
                 },
             )
+            for n in group_nodes:
+                self._emit(job_id, EventType.NODE_HARVESTED, {"node_id": n.id})
 
             adapter = self.adapters[provider]
             batch_ref = adapter.submit(items, idem_key, known_refs=known_refs)

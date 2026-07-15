@@ -84,6 +84,16 @@ def test_submit_known_refs_dedupes_locally():
     assert adapter.submitted_items == [call]
 
 
+def test_find_batch_returns_registry_ref_or_none():
+    """Review F2(c): the mock emulates metadata-stamped lookup — a submitted
+    batch is findable by its idempotency key even without known_refs."""
+    adapter = MockBatchAdapter()
+    ref = adapter.submit([make_call("c1")], "idem-fb")
+
+    assert adapter.find_batch("idem-fb") == ref
+    assert adapter.find_batch("never-submitted") is None
+
+
 def test_submit_rejects_over_caps():
     tiny_caps = Caps(max_items=1, max_bytes=10_000_000, result_ttl_days=29)
     adapter = MockBatchAdapter(caps=tiny_caps)

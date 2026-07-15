@@ -254,11 +254,48 @@ class AnthropicBatchAdapter:
         self._validate_caps(items, requests)
 
         try:
-            batch = self._client.messages.batches.create(requests=requests)
+            # The idempotency key is stamped into the batch's server-side
+            # metadata at create time so a crash between create and the
+            # WAVE_SUBMITTED event can be reconciled via find_batch() instead
+            # of paying for a second batch. The installed SDK's typed create()
+            # has no ``metadata`` parameter, so it rides ``extra_body``.
+            batch = self._client.messages.batches.create(
+                requests=requests,
+                extra_body={"metadata": {"idempotency_key": idempotency_key}},
+            )
         except Exception as exc:
             raise _map_error(exc) from exc
 
         return BatchRef(provider="anthropic", batch_id=batch.id, idempotency_key=idempotency_key)
+
+    # --- find_batch -------------------------------------------------------
+
+    _FIND_BATCH_SCAN_LIMIT = 200
+
+    def find_batch(self, idempotency_key: str) -> BatchRef | None:
+        """Scan recent batches for one whose metadata carries ``idempotency_key``.
+
+        Crash-recovery lookup (see ``base.BatchAdapter.find_batch``): lists the
+        most recent batches (newest first) and matches the ``idempotency_key``
+        stamped by :meth:`submit`. Bounded scan — an orphaned batch is at most
+        minutes old on resume, so it is always near the head of the list.
+        """
+        try:
+            page = self._client.messages.batches.list(limit=100)
+        except Exception as exc:
+            raise _map_error(exc) from exc
+
+        scanned = 0
+        for batch in page:
+            meta = getattr(batch, "metadata", None) or {}
+            if isinstance(meta, dict) and meta.get("idempotency_key") == idempotency_key:
+                return BatchRef(
+                    provider="anthropic", batch_id=batch.id, idempotency_key=idempotency_key
+                )
+            scanned += 1
+            if scanned >= self._FIND_BATCH_SCAN_LIMIT:
+                break
+        return None
 
     # --- poll ---------------------------------------------------------------
 

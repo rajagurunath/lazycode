@@ -98,6 +98,9 @@ class MockBatchAdapter:
         self.submitted_batches: dict[str, list[RenderedCall]] = {}
         self.cancelled_batch_ids: set[str] = set()
         self._batch_counter = 0
+        # idempotency_key -> BatchRef registry, emulating the real adapter's
+        # metadata stamping at create time (find_batch's lookup source).
+        self._idem_to_ref: dict[str, BatchRef] = {}
 
     @property
     def caps(self) -> Caps:
@@ -131,7 +134,14 @@ class MockBatchAdapter:
         self._batch_counter += 1
         self.submitted_batches[batch_id] = list(items)
         self.submitted_items.extend(items)
-        return BatchRef(provider="mock", batch_id=batch_id, idempotency_key=idempotency_key)
+        ref = BatchRef(provider="mock", batch_id=batch_id, idempotency_key=idempotency_key)
+        self._idem_to_ref[idempotency_key] = ref
+        return ref
+
+    def find_batch(self, idempotency_key: str) -> BatchRef | None:
+        """Registry lookup — emulates matching the idempotency key stamped in
+        provider batch metadata (see ``base.BatchAdapter.find_batch``)."""
+        return self._idem_to_ref.get(idempotency_key)
 
     def poll(self, ref: BatchRef) -> BatchStatus:
         items = self.submitted_batches.get(ref.batch_id, [])

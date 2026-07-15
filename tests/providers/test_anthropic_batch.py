@@ -196,6 +196,56 @@ def test_submit_happy_path_returns_batch_ref():
     assert [r["custom_id"] for r in seen_requests[0]] == ["c1", "c2"]
 
 
+def test_submit_stamps_idempotency_key_into_batch_metadata():
+    """Review F2(b): the submit idempotency key must be stamped into the
+    provider batch's metadata at create time (via extra_body — the installed
+    SDK's typed create() has no metadata parameter) so find_batch can
+    reconcile an orphaned batch after a crash."""
+    seen_kwargs = []
+
+    def _create(**kwargs):
+        seen_kwargs.append(kwargs)
+        return fake_batch(batch_id="msgbatch_meta")
+
+    client = SimpleNamespace(messages=SimpleNamespace(batches=SimpleNamespace(create=_create)))
+    adapter = AnthropicBatchAdapter(client=client)
+
+    adapter.submit([make_call("c1")], "idem-key-meta")
+
+    assert seen_kwargs[0]["extra_body"] == {"metadata": {"idempotency_key": "idem-key-meta"}}
+
+
+def test_find_batch_matches_metadata_idempotency_key():
+    """Review F2(c): find_batch lists recent batches and matches the stamped
+    idempotency key; returns the adopted BatchRef."""
+    batches = [
+        SimpleNamespace(id="msgbatch_other", metadata={"idempotency_key": "other-key"}),
+        SimpleNamespace(id="msgbatch_nometa"),  # metadata absent entirely
+        SimpleNamespace(id="msgbatch_target", metadata={"idempotency_key": "wanted-key"}),
+    ]
+
+    def _list(**kwargs):  # noqa: ARG001
+        return batches
+
+    client = SimpleNamespace(messages=SimpleNamespace(batches=SimpleNamespace(list=_list)))
+    adapter = AnthropicBatchAdapter(client=client)
+
+    ref = adapter.find_batch("wanted-key")
+    assert ref == BatchRef(
+        provider="anthropic", batch_id="msgbatch_target", idempotency_key="wanted-key"
+    )
+
+
+def test_find_batch_returns_none_when_no_match():
+    def _list(**kwargs):  # noqa: ARG001
+        return [SimpleNamespace(id="msgbatch_x", metadata={"idempotency_key": "some-key"})]
+
+    client = SimpleNamespace(messages=SimpleNamespace(batches=SimpleNamespace(list=_list)))
+    adapter = AnthropicBatchAdapter(client=client)
+
+    assert adapter.find_batch("missing-key") is None
+
+
 @pytest.mark.parametrize(
     ("status_code", "expected_type"),
     [(429, RateLimited), (500, RetryableError), (400, FatalError)],

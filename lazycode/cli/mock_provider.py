@@ -256,6 +256,12 @@ class FixtureBatchAdapter:
         )
         return ref
 
+    def find_batch(self, idempotency_key: str) -> BatchRef | None:
+        """Registry lookup, hydrated from the durable submissions log — a
+        resumed process finds batches a previous (crashed) process created,
+        emulating the real adapter's metadata match (§7.1 reconcile)."""
+        return self._idem_to_ref.get(idempotency_key)
+
     def poll(self, ref: BatchRef) -> BatchStatus:
         custom_ids = self._batches.get(ref.batch_id, [])
         if ref.batch_id in self._cancelled:
