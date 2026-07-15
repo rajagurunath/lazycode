@@ -86,6 +86,15 @@ class DaemonClient:
         result = self._post("/jobs", payload)
         return result["job_id"]
 
+    def resume_job(self, job_id: str) -> str:
+        """Ask the daemon to resume an interrupted job (POST /jobs/{id}/resume).
+
+        Returns the job id on acceptance (HTTP 202); raises
+        ``urllib.error.HTTPError`` (404) when the daemon knows no such job.
+        """
+        result = self._post(f"/jobs/{job_id}/resume", {})
+        return result["job_id"]
+
 
 def daemon_alive(repo_root: str | Path) -> bool:
     """``True`` iff a daemon's pidfile is live *and* it answers ``/health``."""

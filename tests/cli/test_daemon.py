@@ -142,6 +142,132 @@ def test_get_jobs_lists_status(base_repo: tuple[GitRepo, str, str]):
         store.close()
 
 
+class _CrashOncePollAdapter(MockBatchAdapter):
+    """First ``poll`` raises (simulating a crash / daemon death mid-wave);
+    the provider-side batch persists in ``submitted_batches``."""
+
+    def __init__(self, responses) -> None:
+        super().__init__(responses)
+        self._crashed = False
+
+    def poll(self, ref):
+        if not self._crashed:
+            self._crashed = True
+            raise RuntimeError("simulated daemon death mid-wave")
+        return super().poll(ref)
+
+
+def test_daemon_startup_resumes_interrupted_job(base_repo: tuple[GitRepo, str, str]):
+    """Review F4: on startup the daemon must scan for jobs with a non-terminal
+    status and no live lease and re-enqueue them with resume semantics —
+    otherwise a job interrupted by a daemon crash is stranded forever."""
+    from lazycode.scheduler import Orchestrator, SchedulerConfig
+
+    git_repo, base, patch = base_repo
+    adapter = _CrashOncePollAdapter({"n1": completed("n1", diff_response(patch))})
+
+    # An earlier orchestrator run died mid-wave (batch already submitted).
+    store1 = Store.open(repo=git_repo.root)
+    orch = Orchestrator(
+        store1, {"anthropic": adapter}, git_repo.root, SchedulerConfig(), holder_id="dead-daemon"
+    )
+    job_id = orch.create_job("add a constant", _plan(), base)
+    with pytest.raises(RuntimeError, match="mid-wave"):
+        orch.run_job(job_id)
+    store1.close()
+    assert len(adapter.submitted_batches) == 1
+
+    # A fresh daemon starts: it must pick the half-done job up by itself.
+    store = Store.open(repo=git_repo.root)
+    config = LazycodeConfig(keep_awake=False)
+    thread, stop, port = _start_daemon_thread(
+        git_repo.root, config, adapters={"anthropic": adapter}, store=store
+    )
+    try:
+        client = DaemonClient("127.0.0.1", port)
+        row = _wait_for_job_done(client, job_id)
+        assert row["status"] == "DONE"
+        # Resume semantics: the in-flight batch was re-polled, never re-submitted.
+        assert len(adapter.submitted_batches) == 1
+    finally:
+        stop.set()
+        thread.join(timeout=5.0)
+        store.close()
+
+
+def test_resume_via_daemon_endpoint_returns_202_and_completes(base_repo: tuple[GitRepo, str, str]):
+    """Review F4: ``POST /jobs/{id}/resume`` re-enqueues an interrupted job
+    through the worker (202), instead of the CLI refusing while a daemon is up."""
+    import json as json_mod
+    import urllib.request
+
+    git_repo, base, patch = base_repo
+    adapter = _CrashOncePollAdapter({"n1": completed("n1", diff_response(patch))})
+    store = Store.open(repo=git_repo.root)
+    config = LazycodeConfig(keep_awake=False)
+
+    thread, stop, port = _start_daemon_thread(
+        git_repo.root, config, adapters={"anthropic": adapter}, store=store
+    )
+    try:
+        client = DaemonClient("127.0.0.1", port)
+        job_id = client.submit_job(
+            goal="add a constant", plan=_plan().model_dump(mode="json"), base_commit=base
+        )
+        # First attempt dies mid-wave inside the worker; wait for it to settle.
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() < deadline:
+            health = client.health()
+            jobs = client.list_jobs()
+            if (
+                health["active_jobs"] == 0
+                and health["queue_depth"] == 0
+                and any(j["id"] == job_id for j in jobs)
+            ):
+                break
+            time.sleep(0.05)
+        assert len(adapter.submitted_batches) == 1
+
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/jobs/{job_id}/resume", data=b"{}", method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=3.0) as resp:
+            assert resp.status == 202
+            body = json_mod.loads(resp.read().decode("utf-8"))
+        assert body["job_id"] == job_id
+
+        row = _wait_for_job_done(client, job_id)
+        assert row["status"] == "DONE"
+        assert len(adapter.submitted_batches) == 1  # adopted, not re-submitted
+    finally:
+        stop.set()
+        thread.join(timeout=5.0)
+        store.close()
+
+
+def test_resume_endpoint_unknown_job_404(base_repo: tuple[GitRepo, str, str]):
+    import urllib.error
+    import urllib.request
+
+    git_repo, _base, _patch = base_repo
+    store = Store.open(repo=git_repo.root)
+    config = LazycodeConfig(keep_awake=False)
+    thread, stop, port = _start_daemon_thread(
+        git_repo.root, config, adapters={"anthropic": MockBatchAdapter()}, store=store
+    )
+    try:
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/jobs/job-doesnotexist/resume", data=b"{}", method="POST"
+        )
+        with pytest.raises(urllib.error.HTTPError) as excinfo:
+            urllib.request.urlopen(req, timeout=3.0)
+        assert excinfo.value.code == 404
+    finally:
+        stop.set()
+        thread.join(timeout=5.0)
+        store.close()
+
+
 class _FakeProc:
     def __init__(self) -> None:
         self.terminated = False

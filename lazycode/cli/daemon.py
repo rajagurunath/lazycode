@@ -44,6 +44,7 @@ import logging
 import os
 import platform
 import queue
+import re
 import subprocess
 import threading
 import time
@@ -201,16 +202,21 @@ class JobRequest:
     daemon startup) -- applied by building a fresh, per-job
     :class:`~lazycode.scheduler.SchedulerConfig` (`Daemon._sched_config_for`)
     since M0's ``Orchestrator.create_job`` itself takes no such parameter.
+
+    ``resume=True`` re-drives an **existing** job through the worker
+    (``Orchestrator.run_job`` only — no ``create_job``); ``plan`` and
+    ``base_commit`` are irrelevant then and may be ``None``.
     """
 
     job_id: str
     goal: str
-    plan: Plan
-    base_commit: str
-    slider: int
-    provider: str | None
-    model: str | None
-    keep_awake: bool | None
+    plan: Plan | None = None
+    base_commit: str | None = None
+    slider: int = 70
+    provider: str | None = None
+    model: str | None = None
+    keep_awake: bool | None = None
+    resume: bool = False
 
 
 class Daemon:
@@ -293,6 +299,31 @@ class Daemon:
     def submit(self, req: JobRequest) -> None:
         self._queue.put(req)
 
+    def resume_unfinished_jobs(self) -> list[str]:
+        """Re-enqueue every job with a non-terminal status and no live lease
+        (review F4; §7.5 — batches complete server-side while no daemon runs,
+        so an interrupted job must be picked up again on startup, with resume
+        semantics through the normal worker path)."""
+        from datetime import UTC, datetime
+
+        from lazycode.store import lease as lease_mod
+
+        now = datetime.now(UTC)
+        resumed: list[str] = []
+        rows = self._read_store.conn.execute(
+            "SELECT id, goal FROM jobs WHERE status NOT IN ('DONE', 'CANCELLED') "
+            "ORDER BY created_at"
+        ).fetchall()
+        for row in rows:
+            held = lease_mod.current(self._read_store, row["id"])
+            if held is not None and held[1] > now:
+                continue  # a live holder is already advancing this job
+            self.submit(JobRequest(job_id=row["id"], goal=row["goal"], resume=True))
+            resumed.append(row["id"])
+        if resumed:
+            log.info("daemon startup: resuming %d unfinished job(s): %s", len(resumed), resumed)
+        return resumed
+
     def _worker_loop(self) -> None:
         while True:
             item = self._queue.get()
@@ -328,9 +359,14 @@ class Daemon:
                 self._sched_config_for(req),
                 holder_id=self._holder_id,
             )
-            job_id = orch.create_job(
-                req.goal, req.plan, req.base_commit, slider=req.slider, job_id=req.job_id
-            )
+            if req.resume:
+                # Existing job: resume semantics only (run_job replays the
+                # event log, re-polls in-flight waves, reconciles orphans).
+                job_id = req.job_id
+            else:
+                job_id = orch.create_job(
+                    req.goal, req.plan, req.base_commit, slider=req.slider, job_id=req.job_id
+                )
             result = orch.run_job(job_id)
             notify_fn(job_id, f"job finished: status={result.status}", repo_root=self.repo_root)
         except Exception as exc:  # keep the worker alive across job failures
@@ -358,6 +394,8 @@ class Daemon:
         self._server_thread.start()
         self._worker_thread = threading.Thread(target=self._worker_loop, daemon=True)
         self._worker_thread.start()
+        # Pick up any job interrupted while no daemon was running (review F4).
+        self.resume_unfinished_jobs()
         return actual_port
 
     def stop(self) -> None:
@@ -391,6 +429,18 @@ def _make_handler(daemon: Daemon) -> type[BaseHTTPRequestHandler]:
                 self._send_json(404, {"error": "not found"})
 
         def do_POST(self) -> None:  # noqa: N802 - stdlib handler name
+            resume_match = re.fullmatch(r"/jobs/([^/]+)/resume", self.path)
+            if resume_match is not None:
+                job_id = resume_match.group(1)
+                row = daemon._read_store.conn.execute(
+                    "SELECT id, goal FROM jobs WHERE id = ?", (job_id,)
+                ).fetchone()
+                if row is None:
+                    self._send_json(404, {"error": f"no such job: {job_id}"})
+                    return
+                daemon.submit(JobRequest(job_id=row["id"], goal=row["goal"], resume=True))
+                self._send_json(202, {"job_id": job_id, "resumed": True})
+                return
             if self.path != "/jobs":
                 self._send_json(404, {"error": "not found"})
                 return

@@ -173,6 +173,29 @@ def test_doctor_rebuild_replays_projections(cli_env: GitRepo):
     assert "DONE" in status_result.output
 
 
+def test_resume_routes_to_daemon_when_alive(cli_env: GitRepo, monkeypatch: pytest.MonkeyPatch):
+    """Review F4: `lazycode resume` must hand the job to a live daemon
+    (POST /jobs/{id}/resume) instead of refusing."""
+
+    class _FakeClient:
+        def __init__(self) -> None:
+            self.resumed: list[str] = []
+
+        def resume_job(self, job_id: str) -> str:
+            self.resumed.append(job_id)
+            return job_id
+
+    fake = _FakeClient()
+    monkeypatch.setattr(app_module, "get_client", lambda repo_root: fake)
+
+    runner = CliRunner()
+    result = runner.invoke(app_module.app, ["resume", "job-abcdef123456"])
+
+    assert result.exit_code == 0, result.output
+    assert fake.resumed == ["job-abcdef123456"]
+    assert "daemon" in result.output
+
+
 def test_review_missing_job_errors_clearly(cli_env: GitRepo):
     runner = CliRunner()
     result = runner.invoke(app_module.app, ["review", "job-doesnotexist"])

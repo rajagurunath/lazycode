@@ -301,20 +301,27 @@ def resume(job_id: str = typer.Argument(..., help="Job to resume after a crash/r
     every invocation to rebuild ``known_refs`` and re-poll any in-flight wave
     rather than resubmitting it -- see ``scheduler/resume.py``); this command
     just re-opens the store, reconstructs the same adapters/config `run` would
-    have used, and calls ``run_job`` again. Only valid in the no-daemon
-    (in-process) mode -- when a daemon owns this repo's event log, it is the
-    only process allowed to advance a job (§7.1 single-writer)."""
+    have used, and calls ``run_job`` again. When a daemon owns this repo's
+    event log (§7.1 single-writer), the resume is routed to it over HTTP
+    (POST /jobs/{id}/resume) instead of writing from this process."""
+    import urllib.error
+
     repo_root = _repo_root()
     config = load_config(repo_root)
 
-    if get_client(repo_root) is not None:
+    client = get_client(repo_root)
+    if client is not None:
+        try:
+            resumed = client.resume_job(job_id)
+        except urllib.error.HTTPError as exc:
+            detail = "no such job" if exc.code == 404 else str(exc)
+            console.print(f"[red]Daemon rejected resume of {job_id}: {detail}[/red]")
+            raise typer.Exit(code=1) from exc
         console.print(
-            "[red]A daemon is running for this repo and owns its event log "
-            "(§7.1 single-writer). `lazycode resume` only applies to jobs "
-            "running without a daemon -- stop the daemon, or let it manage "
-            "this job itself.[/red]"
+            f"Handed [bold]{resumed}[/bold] to the daemon for resume. "
+            f"Use `lazycode status {resumed}` to follow it."
         )
-        raise typer.Exit(code=1)
+        return
 
     if config.default_provider != "mock":
         try:
