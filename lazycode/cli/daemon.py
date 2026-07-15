@@ -466,12 +466,26 @@ def run_daemon(
     store = store or Store.open(repo=repo_root)
     if adapters is None:
         provider = config.default_provider
-        config.require_api_key(provider)
-        from lazycode.providers.anthropic_batch import AnthropicBatchAdapter
+        if provider == "mock":
+            # Test/demo seam (cli/mock_provider.py) -- see app.py's
+            # ``_build_batch_adapter`` for the ``lazycode run`` equivalent.
+            from . import mock_provider
 
-        adapters = {
-            provider: AnthropicBatchAdapter.from_env(api_key_env=config.api_key_env_name(provider))
-        }
+            fixture_path = config.mock_fixture_path(repo_root)
+            if fixture_path is None:
+                raise ValueError(
+                    "provider 'mock' requires [providers.mock] fixture = \"...\" in lazycode.toml"
+                )
+            fixture = mock_provider.load_fixture(fixture_path)
+            log_path = Path(repo_root) / ".lazycode" / "mock_submissions.jsonl"
+            adapters = {provider: mock_provider.FixtureBatchAdapter(fixture, submissions_log_path=log_path)}
+        else:
+            config.require_api_key(provider)
+            from lazycode.providers.anthropic_batch import AnthropicBatchAdapter
+
+            adapters = {
+                provider: AnthropicBatchAdapter.from_env(api_key_env=config.api_key_env_name(provider))
+            }
     sched_config = config.to_scheduler_config()
 
     daemon = Daemon(

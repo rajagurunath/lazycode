@@ -9,3 +9,5 @@ build/
 .lazycode/
 *.sqlite3
 .DS_Store
+bench/results/*.json
+!bench/results/.gitkeep

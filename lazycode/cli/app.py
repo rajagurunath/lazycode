@@ -24,10 +24,12 @@ from rich.table import Table
 from lazycode.ir import Plan
 from lazycode.planner import PlanningError, propose_plan
 from lazycode.providers.anthropic_batch import AnthropicBatchAdapter
+from lazycode.providers.base import BatchAdapter, RealtimeAdapter
 from lazycode.providers.realtime import AnthropicRealtimeAdapter
 from lazycode.scheduler import LeaseAcquisitionError, LeaseLostError, Orchestrator
 from lazycode.store import Store, projections
 
+from . import mock_provider
 from .client import get_client
 from .config import ConfigError, LazycodeConfig, load_config
 from .daemon import DaemonAlreadyRunningError, Inhibitor, run_daemon
@@ -81,6 +83,46 @@ def _require_job(store: Store, job_id: str) -> dict:
     return dict(row)
 
 
+# --- provider adapter construction (real Anthropic, or the mock seam) -------
+#
+# ``config.default_provider == "mock"`` is the test/demo seam
+# (``mock_provider.py``): the kill -9 acceptance test and the benchmark
+# harness's mock runs drive the real CLI in a real subprocess, where
+# in-process adapter injection (monkeypatching ``AnthropicRealtimeAdapter``/
+# ``AnthropicBatchAdapter`` on this module, as ``tests/cli/conftest.py`` does)
+# is impossible. Everything else about ``run``/``resume`` is unaware this
+# branch exists.
+
+
+def _build_realtime_adapter(config: LazycodeConfig, repo_root: Path) -> RealtimeAdapter:
+    if config.default_provider == "mock":
+        fixture_path = config.mock_fixture_path(repo_root)
+        if fixture_path is None:
+            console.print(
+                "[red]provider 'mock' requires [providers.mock] fixture = \"...\" "
+                "in lazycode.toml[/red]"
+            )
+            raise typer.Exit(code=1)
+        fixture = mock_provider.load_fixture(fixture_path)
+        return mock_provider.build_mock_realtime_adapter(fixture)
+    return AnthropicRealtimeAdapter.from_env(api_key_env=config.api_key_env_name())
+
+
+def _build_batch_adapter(config: LazycodeConfig, repo_root: Path) -> BatchAdapter:
+    if config.default_provider == "mock":
+        fixture_path = config.mock_fixture_path(repo_root)
+        if fixture_path is None:
+            console.print(
+                "[red]provider 'mock' requires [providers.mock] fixture = \"...\" "
+                "in lazycode.toml[/red]"
+            )
+            raise typer.Exit(code=1)
+        fixture = mock_provider.load_fixture(fixture_path)
+        log_path = repo_root / ".lazycode" / "mock_submissions.jsonl"
+        return mock_provider.FixtureBatchAdapter(fixture, submissions_log_path=log_path)
+    return AnthropicBatchAdapter.from_env(api_key_env=config.api_key_env_name())
+
+
 # --- run ---------------------------------------------------------------
 
 
@@ -101,14 +143,15 @@ def run(
     repo_root = _repo_root()
     config = load_config(repo_root, cli_verify_command=verify)
 
-    try:
-        config.require_api_key()
-    except ConfigError as exc:
-        console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1) from exc
+    if config.default_provider != "mock":
+        try:
+            config.require_api_key()
+        except ConfigError as exc:
+            console.print(f"[red]{exc}[/red]")
+            raise typer.Exit(code=1) from exc
 
     plan_model = config.resolve_model(model)
-    realtime = AnthropicRealtimeAdapter.from_env(api_key_env=config.api_key_env_name())
+    realtime = _build_realtime_adapter(config, repo_root)
     try:
         plan = propose_plan(goal, str(repo_root), realtime, plan_model)
     except PlanningError as exc:
@@ -177,11 +220,7 @@ def _run_in_process(
 
     store = Store.open(repo=repo_root)
     sched_config = config.to_scheduler_config(model=plan_model, max_waves=max_waves)
-    adapters = {
-        config.default_provider: AnthropicBatchAdapter.from_env(
-            api_key_env=config.api_key_env_name()
-        )
-    }
+    adapters = {config.default_provider: _build_batch_adapter(config, repo_root)}
     inhibitor = Inhibitor() if keep_awake else None
     job_id: str | None = None
     try:
@@ -246,6 +285,79 @@ def _run_foreground(store: Store, orch: Orchestrator, job_id: str, console: Cons
     if "error" in error_holder:
         raise error_holder["error"]
     return result_holder["result"]
+
+
+# --- resume --------------------------------------------------------------
+
+
+@app.command()
+def resume(job_id: str = typer.Argument(..., help="Job to resume after a crash/restart.")) -> None:
+    """Resume JOB_ID's wave loop after an interruption (kill -9, Ctrl-C, host
+    reboot) and drive it to completion (§7.1, §7.5).
+
+    ``run`` always creates a *new* job -- this is the thin wrapper for
+    continuing an existing one. All the actual crash-safety lives in
+    ``Orchestrator.run_job`` already (it calls ``scheduler.resume_job`` on
+    every invocation to rebuild ``known_refs`` and re-poll any in-flight wave
+    rather than resubmitting it -- see ``scheduler/resume.py``); this command
+    just re-opens the store, reconstructs the same adapters/config `run` would
+    have used, and calls ``run_job`` again. Only valid in the no-daemon
+    (in-process) mode -- when a daemon owns this repo's event log, it is the
+    only process allowed to advance a job (§7.1 single-writer)."""
+    repo_root = _repo_root()
+    config = load_config(repo_root)
+
+    if get_client(repo_root) is not None:
+        console.print(
+            "[red]A daemon is running for this repo and owns its event log "
+            "(§7.1 single-writer). `lazycode resume` only applies to jobs "
+            "running without a daemon -- stop the daemon, or let it manage "
+            "this job itself.[/red]"
+        )
+        raise typer.Exit(code=1)
+
+    if config.default_provider != "mock":
+        try:
+            config.require_api_key()
+        except ConfigError as exc:
+            console.print(f"[red]{exc}[/red]")
+            raise typer.Exit(code=1) from exc
+
+    store = Store.open(repo=repo_root)
+    job_id_resolved = _require_job(store, job_id)["id"]
+
+    from lazycode.notify import notify
+
+    sched_config = config.to_scheduler_config()
+    adapters = {config.default_provider: _build_batch_adapter(config, repo_root)}
+    try:
+        orch = Orchestrator(store, adapters, repo_root, sched_config)
+        result = _run_foreground(store, orch, job_id_resolved, console)
+        branches = [
+            r["branch"]
+            for r in store.conn.execute(
+                "SELECT branch FROM task_groups WHERE job_id = ?", (job_id_resolved,)
+            ).fetchall()
+        ]
+    except (LeaseAcquisitionError, LeaseLostError) as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    finally:
+        store.close()
+
+    notify(
+        job_id_resolved,
+        f"resumed: status={result.status}, waves={result.waves}",
+        repo_root=repo_root,
+        console=console,
+    )
+    console.print(f"[bold green]Done.[/bold green] status={result.status}")
+    for b in branches:
+        console.print(f"  branch: {b}")
+    if result.report_dir is not None:
+        console.print(f"  report: {result.report_dir / 'report.md'}")
+    if result.needs_human:
+        console.print(f"[yellow]Needs human attention:[/yellow] {', '.join(result.needs_human)}")
 
 
 # --- status ------------------------------------------------------------

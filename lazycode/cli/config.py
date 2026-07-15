@@ -47,10 +47,17 @@ class ConfigError(Exception):
 
 @dataclass(frozen=True)
 class ProviderConfig:
-    """One ``[providers.<name>]`` block, repo + global merged."""
+    """One ``[providers.<name>]`` block, repo + global merged.
+
+    ``fixture`` is only meaningful for ``[providers.mock]`` (test/demo seam,
+    ``cli/mock_provider.py``): the path (repo-relative unless absolute) to a
+    JSON fixture driving a config-constructible mock provider, so the real
+    CLI can run end-to-end in a subprocess with zero network I/O.
+    """
 
     model_default: str | None = None
     api_key_env: str = _DEFAULT_API_KEY_ENV
+    fixture: str | None = None
 
 
 @dataclass(frozen=True)
@@ -75,6 +82,13 @@ class LazycodeConfig:
     notify: dict[str, Any] = field(default_factory=dict)
     keep_awake: bool | Literal["ask"] = "ask"
     max_waves: int = 8
+    # Wave-poll backoff bounds + job-lease TTL (SchedulerConfig §7.1/§7.2
+    # defaults, overridable via [defaults] so tests -- notably the kill -9
+    # acceptance test -- don't have to wait out a 300s lease before a
+    # `lazycode resume` can take over from a killed process).
+    lease_ttl_s: float = 300.0
+    poll_base_s: float = 2.0
+    poll_cap_s: float = 60.0
 
     # --- derived lookups ---------------------------------------------------
 
@@ -91,6 +105,15 @@ class LazycodeConfig:
 
     def api_key_env_name(self, provider: str | None = None) -> str:
         return self.provider_config(provider).api_key_env
+
+    def mock_fixture_path(self, repo_root: str | Path) -> Path | None:
+        """Resolved path to ``[providers.mock].fixture``, or ``None`` if unset
+        (repo-relative when not already absolute; ``cli/mock_provider.py``)."""
+        fixture = self.provider_config("mock").fixture
+        if not fixture:
+            return None
+        path = Path(fixture)
+        return path if path.is_absolute() else Path(repo_root) / path
 
     def require_api_key(self, provider: str | None = None) -> str:
         """Return the resolved API key, or raise :class:`ConfigError` naming
@@ -119,6 +142,9 @@ class LazycodeConfig:
             verify_command=self.verify_command,
             verify_timeout_s=self.verify_timeout_s,
             max_waves=max_waves if max_waves is not None else self.max_waves,
+            poll_base_s=self.poll_base_s,
+            poll_cap_s=self.poll_cap_s,
+            lease_ttl_s=self.lease_ttl_s,
         )
 
 
@@ -160,6 +186,7 @@ def _providers_from_raw(*raws: dict[str, Any]) -> dict[str, ProviderConfig]:
         out[name] = ProviderConfig(
             model_default=block.get("model_default"),
             api_key_env=block.get("api_key_env", _DEFAULT_API_KEY_ENV),
+            fixture=block.get("fixture"),
         )
     return out
 
@@ -200,6 +227,11 @@ def load_config(
         slider=int(defaults_raw.get("slider", 70)),
         model_map=dict(defaults_raw.get("model_map") or {}),
         providers=_providers_from_raw(repo_raw, global_raw),
+        default_provider=defaults_raw.get("provider", _DEFAULT_PROVIDER),
         notify=dict(notify_raw),
         keep_awake=keep_awake,
+        max_waves=int(defaults_raw.get("max_waves", 8)),
+        lease_ttl_s=float(defaults_raw.get("lease_ttl_s", 300.0)),
+        poll_base_s=float(defaults_raw.get("poll_base_s", 2.0)),
+        poll_cap_s=float(defaults_raw.get("poll_cap_s", 60.0)),
     )
