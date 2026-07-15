@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import fnmatch
 import hashlib
+import posixpath
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -108,8 +109,17 @@ def validate_diff_paths(diff_text: str, files_within: list[str]) -> None:
     Must be called before :func:`apply_diff`. Raises :class:`DiffPathViolation`
     on the first offending path (deterministic: paths are checked in
     first-seen diff order).
+
+    Defense-in-depth ahead of git's own backstop (review F8): absolute paths
+    and any path whose *normalized* form escapes the worktree (contains a
+    ``..`` segment after ``posixpath.normpath``) are rejected BEFORE the
+    allow-list globbing — ``fnmatch``'s ``*`` matches ``/`` and ``..``, so
+    globbing alone is not a worktree boundary.
     """
     for path in extract_diff_paths(diff_text):
+        normalized = posixpath.normpath(path)
+        if path.startswith("/") or ".." in normalized.split("/"):
+            raise DiffPathViolation(path, files_within)
         if not any(fnmatch.fnmatch(path, pattern) for pattern in files_within):
             raise DiffPathViolation(path, files_within)
 

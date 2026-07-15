@@ -129,6 +129,60 @@ def test_validate_diff_paths_rejects_out_of_scope_file():
     assert excinfo.value.path == "src/other/module.py"
 
 
+def test_validate_diff_paths_rejects_parent_traversal_even_when_glob_matches():
+    """Review F8: '..' must be rejected BEFORE globbing — fnmatch's '*'
+    happily matches '../escape.py'."""
+    diff_text = (
+        "diff --git a/../escape.py b/../escape.py\n"
+        "--- a/../escape.py\n"
+        "+++ b/../escape.py\n"
+        "@@ -1 +1 @@\n"
+        "-old\n"
+        "+new\n"
+    )
+    with pytest.raises(DiffPathViolation) as excinfo:
+        validate_diff_paths(diff_text, ["*"])
+    assert excinfo.value.path == "../escape.py"
+
+
+def test_validate_diff_paths_rejects_embedded_traversal_after_normalization():
+    diff_text = (
+        "--- a/src/../../outside.py\n"
+        "+++ b/src/../../outside.py\n"
+        "@@ -1 +1 @@\n"
+        "-old\n"
+        "+new\n"
+    )
+    with pytest.raises(DiffPathViolation):
+        validate_diff_paths(diff_text, ["*"])
+
+
+def test_validate_diff_paths_rejects_absolute_path():
+    diff_text = (
+        "--- /abs/path.py\n"
+        "+++ /abs/path.py\n"
+        "@@ -1 +1 @@\n"
+        "-old\n"
+        "+new\n"
+    )
+    with pytest.raises(DiffPathViolation) as excinfo:
+        validate_diff_paths(diff_text, ["*"])
+    assert excinfo.value.path == "/abs/path.py"
+
+
+def test_validate_diff_paths_allows_interior_dotdot_that_normalizes_inside():
+    """src/a/../b.py normalizes to src/b.py — inside the tree, allowed if the
+    allow-list matches the *written* path."""
+    diff_text = (
+        "--- a/src/billing/sub/../tax.py\n"
+        "+++ b/src/billing/sub/../tax.py\n"
+        "@@ -1 +1 @@\n"
+        "-old\n"
+        "+new\n"
+    )
+    validate_diff_paths(diff_text, ["src/billing/*"])  # no raise
+
+
 def test_compute_diff_hash_normalizes_line_endings():
     a = "line1\nline2\n"
     b = "line1\r\nline2\r\n"
