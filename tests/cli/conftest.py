@@ -17,6 +17,21 @@ import pytest
 from lazycode.ir import ItemResult, ItemStatus, RenderedCall
 
 
+@pytest.fixture(autouse=True)
+def _plain_terminal_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    """CLI tests assert on plain strings; a FORCE_COLOR inherited from the
+    invoking shell makes rich emit ANSI escapes and breaks them. The env vars
+    cover subprocesses; the module-level console was already constructed at
+    import time with the shell's env baked in, so replace it too."""
+    from rich.console import Console
+
+    from lazycode.cli import app as app_module
+
+    monkeypatch.delenv("FORCE_COLOR", raising=False)
+    monkeypatch.setenv("NO_COLOR", "1")
+    monkeypatch.setattr(app_module, "console", Console(no_color=True, force_terminal=False))
+
+
 @dataclass
 class GitRepo:
     root: Path
