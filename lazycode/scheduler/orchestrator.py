@@ -7,9 +7,12 @@ branch + report, entirely through the event log so
 Wave-loop invariants enforced (§7.1, §7.2):
 
 * **Single-writer / lease.** ``run_job`` acquires the per-job lease before
-  advancing it and renews it every iteration; if renewal fails (takeover) it
-  aborts cleanly with :class:`LeaseLostError`. A second orchestrator that cannot
-  acquire the lease raises :class:`LeaseAcquisitionError`.
+  advancing it, renews it every wave iteration, and **heartbeat-renews it on
+  every poll iteration of an in-flight wave** (throttled to ``lease_ttl_s/3``)
+  so a wave that outlasts the TTL never becomes stealable; if renewal fails
+  (takeover) it aborts cleanly — before writing anything — with
+  :class:`LeaseLostError`. A second orchestrator that cannot acquire the lease
+  raises :class:`LeaseAcquisitionError`.
 * **Hard per-job barriers.** Each iteration forms the entire ready frontier,
   runs local nodes inline, submits remote nodes as one batch per (provider,
   model) group, and **waits for every group to reach a terminal state before
@@ -161,6 +164,9 @@ class Orchestrator:
         self.holder_id = holder_id or f"orch-{uuid.uuid4().hex[:8]}"
         # Response text of local nodes produced this run (fan-out resolution).
         self._local_outputs: dict[str, str] = {}
+        # monotonic timestamp of the last successful lease acquire/renew,
+        # driving the ttl/3 heartbeat throttle (§7.1, review F3).
+        self._last_renew_monotonic = 0.0
 
     # --- job creation (seed the event log from a plan) --------------------
 
@@ -241,6 +247,7 @@ class Orchestrator:
             raise LeaseAcquisitionError(
                 f"job {job_id!r} lease held by {holder[0] if holder else '?'!r}"
             )
+        self._last_renew_monotonic = time.monotonic()
         try:
             state = resume_job(self.store, job_id)
             known_refs = state.known_refs
@@ -260,8 +267,7 @@ class Orchestrator:
             # 2. Barrier-wave loop.
             waves_run = 0
             for _ in range(self.config.max_waves):
-                if not lease.renew(self.store, job_id, self.holder_id, self.config.lease_ttl_s):
-                    raise LeaseLostError(f"lost lease on job {job_id!r} mid-run")
+                self._heartbeat(job_id, force=True)
 
                 nodes = self._load_nodes(job_id)
                 frontier = self._frontier(nodes)
@@ -295,6 +301,24 @@ class Orchestrator:
             )
         finally:
             lease.release(self.store, job_id, self.holder_id)
+
+    # --- lease heartbeat (§7.1, review F3) ----------------------------------
+
+    def _heartbeat(self, job_id: str, *, force: bool = False) -> None:
+        """Renew the job lease; raise :class:`LeaseLostError` if it is gone.
+
+        Called on every wave-loop iteration (``force=True``) and on every poll
+        iteration of an in-flight wave, throttled to ``lease_ttl_s / 3`` so a
+        long poll loop keeps the lease alive without spamming LEASE_RENEWED
+        events. A failed renew means another holder took over (or the row is
+        gone) — the orchestrator must abort cleanly with **no further writes**.
+        """
+        now = time.monotonic()
+        if not force and now - self._last_renew_monotonic < self.config.lease_ttl_s / 3:
+            return
+        if not lease.renew(self.store, job_id, self.holder_id, self.config.lease_ttl_s):
+            raise LeaseLostError(f"lost lease on job {job_id!r} mid-run")
+        self._last_renew_monotonic = now
 
     # --- frontier / readiness --------------------------------------------
 
@@ -621,6 +645,10 @@ class Orchestrator:
         adapter = self.adapters[provider]
         delays = backoff_delays(base=self.config.poll_base_s, cap=self.config.poll_cap_s)
         while True:
+            # Heartbeat-renew the lease inside the poll loop (review F3): a
+            # wave can outlast lease_ttl_s many times over, and without this a
+            # second orchestrator could take over mid-wave and double-submit.
+            self._heartbeat(job_id)
             try:
                 status = adapter.poll(batch_ref)
             except RetryableError:
@@ -629,6 +657,11 @@ class Orchestrator:
             if status.is_terminal:
                 break
             time.sleep(next(delays))
+
+        # Confirm we still hold the lease before writing any results — if a
+        # takeover happened while we were blocked on the provider, abort with
+        # LeaseLostError having written nothing (review F3).
+        self._heartbeat(job_id, force=True)
 
         for result in adapter.fetch(batch_ref):
             pair = rendered.get(result.custom_id)

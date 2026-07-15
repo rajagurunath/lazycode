@@ -3,9 +3,11 @@ from __future__ import annotations
 import pytest
 
 from lazycode.ir import (
+    BatchStatus,
     CommandContract,
     ContextSpec,
     DiffContract,
+    EventType,
     Explore,
     Generate,
     NodeStatus,
@@ -15,10 +17,11 @@ from lazycode.ir import (
 from lazycode.providers.mock import MockBatchAdapter
 from lazycode.scheduler import (
     LeaseAcquisitionError,
+    LeaseLostError,
     Orchestrator,
     SchedulerConfig,
 )
-from lazycode.store import Store, lease
+from lazycode.store import Store, eventlog, lease
 
 from .conftest import GitRepo, completed, diff_response, expired
 
@@ -171,6 +174,128 @@ def test_lease_contention_blocks_second_orchestrator(git_repo: GitRepo):
     assert lease.acquire(store, job_id, "other-holder", 300.0)
     with pytest.raises(LeaseAcquisitionError):
         orch.run_job(job_id)
+    store.close()
+
+
+class _SlowPollAdapter(MockBatchAdapter):
+    """Reports the batch in_progress for ``non_terminal_polls`` polls, invoking
+    ``on_poll`` (which may sleep, to make the wave outlast the lease TTL) on
+    each, then completes normally."""
+
+    def __init__(self, responses, *, non_terminal_polls: int, on_poll=None) -> None:
+        super().__init__(responses)
+        self._non_terminal_remaining = non_terminal_polls
+        self._on_poll = on_poll
+
+    def poll(self, ref):
+        if self._on_poll is not None:
+            self._on_poll()
+        if self._non_terminal_remaining > 0:
+            self._non_terminal_remaining -= 1
+            items = self.submitted_batches.get(ref.batch_id, [])
+            return BatchStatus(
+                batch_status="in_progress", completed=0, errored=0, expired=0, processing=len(items)
+            )
+        return super().poll(ref)
+
+
+def test_lease_kept_alive_during_poll_loop_longer_than_ttl(git_repo: GitRepo):
+    """Review F3(a): the lease must be heartbeat-renewed inside the wave poll
+    loop — a wave that outlasts the TTL must never become stealable by a
+    second orchestrator."""
+    git_repo.write("mod_a.py", "A = 1\n")
+    base = git_repo.commit("init")
+    patch_a = git_repo.make_patch("mod_a.py", "A = 1\nA2 = 2\n")
+
+    store = _open_store(git_repo)
+    intruder_store = Store.open(db_path=store.db_path)
+    cfg = SchedulerConfig(lease_ttl_s=0.3, poll_base_s=0.01, poll_cap_s=0.02)
+
+    job_holder: dict[str, str] = {}
+    intruder_acquired: list[bool] = []
+
+    def on_poll() -> None:
+        import time
+
+        time.sleep(0.15)  # each poll round-trip alone outlasts ttl/2
+        if "job_id" in job_holder:
+            got = lease.acquire(intruder_store, job_holder["job_id"], "intruder", 60.0)
+            intruder_acquired.append(got)
+            if got:  # don't wedge the run if the bug is present
+                lease.release(intruder_store, job_holder["job_id"], "intruder")
+
+    adapter = _SlowPollAdapter(
+        {"n2": completed("n2", patch_a)}, non_terminal_polls=6, on_poll=on_poll
+    )
+    orch = Orchestrator(store, {"anthropic": adapter}, git_repo.root, cfg, holder_id="runner-1")
+    plan = Plan(goal="g", nodes=[_gen("n2", "mod_a.py", [])])
+    job_id = orch.create_job("g", plan, base)
+    job_holder["job_id"] = job_id
+
+    result = orch.run_job(job_id)
+
+    assert result.status == "DONE"
+    # The whole wave took ~6 x 0.15s >> ttl 0.3s, yet the lease was never
+    # stealable at any poll boundary.
+    assert intruder_acquired, "intruder never even attempted acquisition"
+    assert not any(intruder_acquired), (
+        "lease expired mid-wave: a second orchestrator could take over and double-submit"
+    )
+    intruder_store.close()
+    store.close()
+
+
+class _StealLeaseAdapter(MockBatchAdapter):
+    """First poll hands the lease to another holder (simulating an
+    expiry-takeover while this orchestrator was blocked on the provider)
+    and reports the batch terminal."""
+
+    def __init__(self, responses, *, store: Store) -> None:
+        super().__init__(responses)
+        self._steal_store = store
+        self.stole = False
+
+    def poll(self, ref):
+        if not self.stole:
+            self.stole = True
+            # Simulate takeover-after-expiry: the row now belongs to someone else.
+            self._steal_store.conn.execute(
+                "UPDATE leases SET holder_id = 'usurper'"
+            )
+            self._steal_store.conn.commit()
+        return super().poll(ref)
+
+
+def test_takeover_during_wave_aborts_with_lease_lost_and_no_writes(git_repo: GitRepo):
+    """Review F3(b): when the lease is taken over mid-wave, the first
+    orchestrator must raise LeaseLostError and write nothing further — no
+    WAVE_COMPLETED, no ITEM_RETURNED, no applies."""
+    git_repo.write("mod_a.py", "A = 1\n")
+    base = git_repo.commit("init")
+    patch_a = git_repo.make_patch("mod_a.py", "A = 1\nA2 = 2\n")
+
+    store = _open_store(git_repo)
+    steal_store = Store.open(db_path=store.db_path)
+    adapter = _StealLeaseAdapter({"n2": completed("n2", patch_a)}, store=steal_store)
+    cfg = SchedulerConfig(poll_base_s=0.01, poll_cap_s=0.02)
+    orch = Orchestrator(store, {"anthropic": adapter}, git_repo.root, cfg, holder_id="runner-1")
+    plan = Plan(goal="g", nodes=[_gen("n2", "mod_a.py", [])])
+    job_id = orch.create_job("g", plan, base)
+
+    with pytest.raises(LeaseLostError):
+        orch.run_job(job_id)
+
+    types = [e.type for e in eventlog.read(store, job_id)]
+    assert EventType.WAVE_SUBMITTED in types
+    assert EventType.WAVE_COMPLETED not in types, "wrote WAVE_COMPLETED after losing the lease"
+    assert EventType.ITEM_RETURNED not in types, "processed results after losing the lease"
+    assert EventType.ARTIFACT_APPLIED not in types
+
+    status = store.conn.execute(
+        "SELECT status FROM nodes WHERE job_id = ? AND id = 'n2'", (job_id,)
+    ).fetchone()["status"]
+    assert status == NodeStatus.SUBMITTED.value
+    steal_store.close()
     store.close()
 
 
