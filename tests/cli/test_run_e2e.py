@@ -173,6 +173,53 @@ def test_doctor_rebuild_replays_projections(cli_env: GitRepo):
     assert "DONE" in status_result.output
 
 
+def test_doctor_rebuild_refuses_while_daemon_alive(cli_env: GitRepo, monkeypatch: pytest.MonkeyPatch):
+    """Review F5: doctor --rebuild writes the projection tables — it must
+    refuse while a daemon (the sole event-log writer, §7.1) is alive."""
+    monkeypatch.setattr(app_module, "get_client", lambda repo_root: object())
+
+    runner = CliRunner()
+    result = runner.invoke(app_module.app, ["doctor", "--rebuild", "job-abcdef123456"])
+
+    assert result.exit_code == 1
+    assert "daemon" in result.output.lower()
+
+
+def test_doctor_rebuild_force_overrides_daemon_check(cli_env: GitRepo, monkeypatch: pytest.MonkeyPatch):
+    runner = CliRunner()
+    run_result = runner.invoke(app_module.app, ["run", "add a constant to mod_a.py", "--yes"])
+    assert run_result.exit_code == 0, run_result.output
+    job_id = _extract_job_id(run_result.output)
+
+    monkeypatch.setattr(app_module, "get_client", lambda repo_root: object())
+    result = runner.invoke(app_module.app, ["doctor", "--rebuild", job_id, "--force"])
+    assert result.exit_code == 0, result.output
+    assert "Rebuilt projections" in result.output
+
+
+def test_doctor_rebuild_refuses_when_lease_held_by_other(cli_env: GitRepo):
+    """Review F5: the rebuild runs under the job lease — a live orchestrator
+    holding the lease blocks it."""
+    from lazycode.store import Store, lease
+
+    runner = CliRunner()
+    run_result = runner.invoke(app_module.app, ["run", "add a constant to mod_a.py", "--yes"])
+    assert run_result.exit_code == 0, run_result.output
+    job_id = _extract_job_id(run_result.output)
+
+    store = Store.open(repo=cli_env.root)
+    try:
+        assert lease.acquire(store, job_id, "other-orchestrator", 300.0)
+        result = runner.invoke(app_module.app, ["doctor", "--rebuild", job_id])
+        assert result.exit_code == 1
+        assert "lease" in result.output.lower()
+        # The other holder's lease is untouched.
+        holder, _ = lease.current(store, job_id)
+        assert holder == "other-orchestrator"
+    finally:
+        store.close()
+
+
 def test_resume_routes_to_daemon_when_alive(cli_env: GitRepo, monkeypatch: pytest.MonkeyPatch):
     """Review F4: `lazycode resume` must hand the job to a live daemon
     (POST /jobs/{id}/resume) instead of refusing."""

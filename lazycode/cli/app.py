@@ -580,13 +580,46 @@ def daemon(
 @app.command(hidden=True)
 def doctor(
     rebuild: str = typer.Option(..., "--rebuild", help="Job id to rebuild projections for."),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Rebuild even while a daemon is alive (unsafe: concurrent event-log writer).",
+    ),
 ) -> None:
-    """Replay JOB_ID's event log to rebuild jobs/nodes/waves projections."""
+    """Replay JOB_ID's event log to rebuild jobs/nodes/waves projections.
+
+    Rebuilding *writes* the projection tables, so it refuses while a daemon
+    (the sole event-log writer, §7.1) is alive unless --force is given, and it
+    runs under the job lease so it can never race a live orchestrator."""
+    import os
+
+    from lazycode.store import lease
+
     repo_root = _repo_root()
+    if not force and get_client(repo_root) is not None:
+        console.print(
+            "[red]A daemon is running for this repo and owns its event log "
+            "(§7.1 single-writer) — `doctor --rebuild` writes the projection "
+            "tables. Stop the daemon first, or pass --force to override.[/red]"
+        )
+        raise typer.Exit(code=1)
+
     store = Store.open(repo=repo_root)
+    holder = f"doctor-{os.getpid()}"
     try:
         _require_job(store, rebuild)
-        projections.rebuild(store, rebuild)
+        if not lease.acquire(store, rebuild, holder, 60.0):
+            current = lease.current(store, rebuild)
+            console.print(
+                f"[red]Job {rebuild}'s lease is held by "
+                f"{current[0] if current else '?'} — refusing to rebuild "
+                "projections under a live orchestrator.[/red]"
+            )
+            raise typer.Exit(code=1)
+        try:
+            projections.rebuild(store, rebuild)
+        finally:
+            lease.release(store, rebuild, holder)
         console.print(f"Rebuilt projections for {rebuild}.")
     finally:
         store.close()
