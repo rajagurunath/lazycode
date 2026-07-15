@@ -4,9 +4,12 @@ an injected fake, and pidfile-based single-instance enforcement."""
 
 from __future__ import annotations
 
+import os
+import socket
 import threading
 import time
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -16,6 +19,8 @@ from lazycode.cli.daemon import (
     DaemonAlreadyRunningError,
     Inhibitor,
     check_existing,
+    daemon_dir,
+    pidfile_path,
     portfile_path,
     run_daemon,
 )
@@ -360,6 +365,110 @@ def test_keep_awake_ask_policy_only_inhibits_when_job_requests_it(base_repo: tup
         store.close()
 
 
+class _FakeProcWithPid(_FakeProc):
+    def __init__(self, pid: int) -> None:
+        super().__init__()
+        self.pid = pid
+
+
+def test_inhibitor_writes_pidfile_on_start_and_clears_on_stop(tmp_path):
+    """Review F6: the inhibitor's pid is persisted so a daemon crash never
+    leaks an untraceable caffeinate/systemd-inhibit process."""
+    pid_path = tmp_path / "inhibitor.pid"
+    inhibitor = Inhibitor(
+        command=["fake-caffeinate", "-i"],
+        spawn=lambda cmd: _FakeProcWithPid(4242),
+        pid_path=pid_path,
+    )
+    inhibitor.start()
+    assert pid_path.read_text().strip() == "4242"
+    inhibitor.stop()
+    assert not pid_path.exists()
+
+
+def test_default_inhibitor_spawn_uses_own_process_group(monkeypatch):
+    """Review F6: the default spawn must put the inhibitor in its own process
+    group (start_new_session) so it never dies/lives with the daemon's group."""
+    import lazycode.cli.daemon as daemon_module
+
+    seen: list[dict] = []
+
+    def fake_popen(cmd, **kwargs):
+        seen.append({"cmd": cmd, **kwargs})
+        return _FakeProcWithPid(777)
+
+    monkeypatch.setattr(daemon_module.subprocess, "Popen", fake_popen)
+    inhibitor = Inhibitor(command=["fake-caffeinate", "-i"])
+    inhibitor.start()
+    assert seen and seen[0]["cmd"] == ["fake-caffeinate", "-i"]
+    assert seen[0].get("start_new_session") is True
+
+
+def test_reap_stale_inhibitor_kills_live_inhibitor_process(tmp_path):
+    from lazycode.cli.daemon import reap_stale_inhibitor
+
+    pid_path = tmp_path / "inhibitor.pid"
+    pid_path.write_text("4242")
+    killed: list[tuple[int, int]] = []
+
+    reaped = reap_stale_inhibitor(
+        pid_path,
+        pid_alive_fn=lambda pid: True,
+        proc_command_fn=lambda pid: "/usr/bin/caffeinate",
+        kill_fn=lambda pid, sig: killed.append((pid, sig)),
+    )
+
+    assert reaped is True
+    assert [k[0] for k in killed] == [4242]
+    assert not pid_path.exists()
+
+
+def test_reap_stale_inhibitor_spares_recycled_pid(tmp_path):
+    """A recycled pid now belonging to some unrelated process must NOT be
+    killed — only caffeinate/systemd-inhibit are fair game."""
+    from lazycode.cli.daemon import reap_stale_inhibitor
+
+    pid_path = tmp_path / "inhibitor.pid"
+    pid_path.write_text("4242")
+    killed: list[int] = []
+
+    reaped = reap_stale_inhibitor(
+        pid_path,
+        pid_alive_fn=lambda pid: True,
+        proc_command_fn=lambda pid: "/usr/bin/some-random-daemon",
+        kill_fn=lambda pid, sig: killed.append(pid),
+    )
+
+    assert reaped is False
+    assert killed == []
+    assert not pid_path.exists()  # stale record is still cleaned up
+
+
+def test_run_daemon_reaps_stale_inhibitor_on_startup(base_repo, monkeypatch):
+    import lazycode.cli.daemon as daemon_module
+
+    git_repo, _base, _patch = base_repo
+    reap_calls: list[Path] = []
+    monkeypatch.setattr(
+        daemon_module,
+        "reap_stale_inhibitor",
+        lambda pid_path, **kwargs: reap_calls.append(Path(pid_path)),
+    )
+
+    store = Store.open(repo=git_repo.root)
+    config = LazycodeConfig(keep_awake=False)
+    thread, stop, port = _start_daemon_thread(
+        git_repo.root, config, adapters={"anthropic": MockBatchAdapter()}, store=store
+    )
+    try:
+        assert reap_calls, "daemon startup did not reap stale inhibitors"
+        assert reap_calls[0].name == "inhibitor.pid"
+    finally:
+        stop.set()
+        thread.join(timeout=5.0)
+        store.close()
+
+
 def test_pidfile_prevents_second_daemon(base_repo: tuple[GitRepo, str, str]):
     git_repo, base, patch = base_repo
     store = Store.open(repo=git_repo.root)
@@ -386,6 +495,41 @@ def test_pidfile_prevents_second_daemon(base_repo: tuple[GitRepo, str, str]):
 
     # Clean shutdown clears the pidfile -- a new daemon can start again.
     assert check_existing(git_repo.root) is None
+
+
+def test_stale_pidfile_with_dead_port_is_cleared_and_daemon_starts(
+    base_repo: tuple[GitRepo, str, str],
+):
+    """Review F7: a pidfile whose PID is alive (e.g. recycled) but whose port
+    does not answer /health is stale — the daemon must clear it and start,
+    not refuse forever."""
+    git_repo, _base, _patch = base_repo
+
+    # A port that is guaranteed closed: bind, read, release.
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    dead_port = s.getsockname()[1]
+    s.close()
+
+    daemon_dir(git_repo.root).mkdir(parents=True, exist_ok=True)
+    pidfile_path(git_repo.root).write_text(str(os.getpid()), encoding="utf-8")
+    portfile_path(git_repo.root).write_text(str(dead_port), encoding="utf-8")
+
+    store = Store.open(repo=git_repo.root)
+    config = LazycodeConfig(keep_awake=False)
+    thread, stop, port = _start_daemon_thread(
+        git_repo.root, config, adapters={"anthropic": MockBatchAdapter()}, store=store
+    )
+    try:
+        client = DaemonClient("127.0.0.1", port)
+        assert client.health()["status"] == "ok"
+        # The stale record was replaced with the live daemon's own pid/port.
+        assert pidfile_path(git_repo.root).read_text().strip() != ""
+        assert int(portfile_path(git_repo.root).read_text()) == port
+    finally:
+        stop.set()
+        thread.join(timeout=5.0)
+        store.close()
 
 
 def test_sched_config_for_applies_per_job_model_override(base_repo: tuple[GitRepo, str, str]):

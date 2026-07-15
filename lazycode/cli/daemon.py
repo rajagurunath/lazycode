@@ -133,7 +133,83 @@ def _clear_pidfiles(repo_root: str | Path) -> None:
             pass
 
 
+def _probe_health(port: int, *, timeout: float = 1.0) -> bool:
+    """True iff a daemon answers ``/health`` on ``port`` (review F7)."""
+    import urllib.error
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/health", timeout=timeout
+        ) as resp:
+            return resp.status == 200
+    except (urllib.error.URLError, OSError, TimeoutError, ValueError):
+        return False
+
+
 # --- keep-awake inhibitor (§7.5) ------------------------------------------
+
+
+def inhibitor_pidfile_path(repo_root: str | Path) -> Path:
+    return daemon_dir(repo_root) / "inhibitor.pid"
+
+
+_INHIBITOR_COMMAND_NAMES = ("caffeinate", "systemd-inhibit")
+
+
+def _proc_command(pid: int) -> str | None:
+    """The command of a live process (``ps -o comm=``), or ``None``."""
+    try:
+        result = subprocess.run(
+            ["ps", "-o", "comm=", "-p", str(pid)], capture_output=True, text=True
+        )
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def reap_stale_inhibitor(
+    pid_path: str | Path,
+    *,
+    pid_alive_fn: Callable[[int], bool] = _pid_alive,
+    proc_command_fn: Callable[[int], str | None] = _proc_command,
+    kill_fn: Callable[[int, int], None] = os.kill,
+) -> bool:
+    """Kill a sleep inhibitor a crashed daemon left behind (review F6).
+
+    Reads the persisted inhibitor pid; if that process is still alive AND is a
+    known inhibitor command (caffeinate / systemd-inhibit — a recycled pid
+    belonging to anything else is left alone), it is terminated. The pidfile
+    is removed either way. Returns ``True`` iff a process was killed.
+    """
+    import signal
+
+    path = Path(pid_path)
+    if not path.is_file():
+        return False
+    try:
+        pid = int(path.read_text().strip())
+    except ValueError:
+        pid = None
+
+    killed = False
+    if pid is not None and pid_alive_fn(pid):
+        command = proc_command_fn(pid) or ""
+        name = os.path.basename(command)
+        if any(name.startswith(known) for known in _INHIBITOR_COMMAND_NAMES):
+            try:
+                kill_fn(pid, signal.SIGTERM)
+                killed = True
+                log.warning("reaped stale sleep inhibitor pid=%d (%s)", pid, name)
+            except OSError:  # pragma: no cover - raced its own exit
+                log.debug("stale inhibitor pid=%d vanished before kill", pid)
+    try:
+        path.unlink()
+    except FileNotFoundError:  # pragma: no cover
+        pass
+    return killed
 
 
 def default_inhibitor_command() -> list[str] | None:
@@ -150,18 +226,38 @@ def default_inhibitor_command() -> list[str] | None:
 SpawnFn = Callable[[list[str]], Any]
 
 
+def _spawn_inhibitor(command: list[str]) -> Any:
+    """Default inhibitor spawn: its own process group (``start_new_session``,
+    review F6) so signals aimed at the daemon's group never hit it and a
+    crashed daemon's inhibitor is cleanly reapable by pid."""
+    return subprocess.Popen(command, start_new_session=True)
+
+
 class Inhibitor:
     """Holds a sleep-inhibiting subprocess while the daemon has active jobs.
 
     ``spawn`` is injected (module brief: "inject the inhibitor-spawn as a
-    callable for testability") — defaults to ``subprocess.Popen`` against
+    callable for testability") — defaults to :func:`_spawn_inhibitor`
+    (``subprocess.Popen`` in its own process group) against
     :func:`default_inhibitor_command`; tests pass a fake recording calls
     instead of touching real OS sleep state.
+
+    ``pid_path`` (review F6): when given, the spawned inhibitor's pid is
+    persisted there on start and removed on stop, so a daemon that crashes
+    while inhibiting leaves a record the next startup can reap
+    (:func:`reap_stale_inhibitor`).
     """
 
-    def __init__(self, *, command: list[str] | None = None, spawn: SpawnFn | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        command: list[str] | None = None,
+        spawn: SpawnFn | None = None,
+        pid_path: str | Path | None = None,
+    ) -> None:
         self._command = command if command is not None else default_inhibitor_command()
-        self._spawn = spawn or subprocess.Popen
+        self._spawn = spawn or _spawn_inhibitor
+        self._pid_path = Path(pid_path) if pid_path is not None else None
         self._proc: Any = None
         self.start_count = 0
         self.stop_count = 0
@@ -175,6 +271,10 @@ class Inhibitor:
             return
         self._proc = self._spawn(self._command)
         self.start_count += 1
+        pid = getattr(self._proc, "pid", None)
+        if self._pid_path is not None and pid is not None:
+            self._pid_path.parent.mkdir(parents=True, exist_ok=True)
+            self._pid_path.write_text(str(pid), encoding="utf-8")
 
     def stop(self) -> None:
         if self._proc is None:
@@ -188,6 +288,11 @@ class Inhibitor:
                 terminate()
             except Exception:  # pragma: no cover - best effort cleanup
                 log.debug("inhibitor terminate() raised", exc_info=True)
+        if self._pid_path is not None:
+            try:
+                self._pid_path.unlink()
+            except FileNotFoundError:
+                pass
 
 
 # --- job queue -------------------------------------------------------------
@@ -507,10 +612,24 @@ def run_daemon(
     existing = check_existing(repo_root)
     if existing is not None:
         pid, existing_port = existing
-        raise DaemonAlreadyRunningError(
-            f"a lazycode daemon is already running for {repo_root} "
-            f"(pid={pid}, port={existing_port})"
+        # Review F7: a live-looking pid (possibly recycled) is not proof of a
+        # live daemon — only an answering /health is. A non-answering port
+        # means the record is stale: clear it and start normally.
+        if _probe_health(existing_port):
+            raise DaemonAlreadyRunningError(
+                f"a lazycode daemon is already running for {repo_root} "
+                f"(pid={pid}, port={existing_port})"
+            )
+        log.warning(
+            "stale daemon pidfile for %s (pid=%d alive but port %d not answering /health) — clearing",
+            repo_root,
+            pid,
+            existing_port,
         )
+        _clear_pidfiles(repo_root)
+
+    # Review F6: reap any sleep inhibitor a previously crashed daemon left running.
+    reap_stale_inhibitor(inhibitor_pidfile_path(repo_root))
 
     owns_store = store is None
     store = store or Store.open(repo=repo_root)
@@ -544,7 +663,7 @@ def run_daemon(
         repo_root=repo_root,
         config=config,
         sched_config=sched_config,
-        inhibitor=inhibitor,
+        inhibitor=inhibitor or Inhibitor(pid_path=inhibitor_pidfile_path(repo_root)),
         holder_id=f"daemon-{os.getpid()}",
     )
     actual_port = daemon.start(host=host, port=port)
