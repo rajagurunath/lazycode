@@ -1,0 +1,6 @@
+name: coverage-a-module
+goal: >-
+  Write pytest tests in tests/test_strings.py covering the untested branches
+  of pkg/strings/normalize.py (slugify and truncate).
+generator: generate.py
+verify_command: "python -m pytest -q tests/test_strings.py"

@@ -1,0 +1,102 @@
+{
+  "planner_response": {
+    "goal": "Add PEP 484 type hints to every function signature in pkg/billing/*.py. Do not change behavior.",
+    "assumptions": [
+      "functions use only builtin/dict/list types"
+    ],
+    "schema_version": 1,
+    "nodes": [
+      {
+        "op": "Generate",
+        "id": "n1",
+        "spec": "add type hints to invoice.py",
+        "deps": [],
+        "context_spec": {
+          "files": [
+            "pkg/billing/invoice.py"
+          ],
+          "repo_map": false,
+          "house_rules": false,
+          "extras": {}
+        },
+        "output_contract": {
+          "type": "diff",
+          "files_within": [
+            "pkg/billing/invoice.py"
+          ]
+        }
+      },
+      {
+        "op": "Generate",
+        "id": "n2",
+        "spec": "add type hints to ledger.py",
+        "deps": [],
+        "context_spec": {
+          "files": [
+            "pkg/billing/ledger.py"
+          ],
+          "repo_map": false,
+          "house_rules": false,
+          "extras": {}
+        },
+        "output_contract": {
+          "type": "diff",
+          "files_within": [
+            "pkg/billing/ledger.py"
+          ]
+        }
+      },
+      {
+        "op": "Generate",
+        "id": "n3",
+        "spec": "add type hints to refunds.py",
+        "deps": [],
+        "context_spec": {
+          "files": [
+            "pkg/billing/refunds.py"
+          ],
+          "repo_map": false,
+          "house_rules": false,
+          "extras": {}
+        },
+        "output_contract": {
+          "type": "diff",
+          "files_within": [
+            "pkg/billing/refunds.py"
+          ]
+        }
+      },
+      {
+        "op": "Verify",
+        "id": "n4",
+        "deps": [
+          "n1",
+          "n2",
+          "n3"
+        ],
+        "checks": [
+          {
+            "type": "command",
+            "cmd": "true",
+            "timeout_s": 10
+          }
+        ]
+      }
+    ]
+  },
+  "items": {
+    "n1": {
+      "diff": "diff --git a/pkg/billing/invoice.py b/pkg/billing/invoice.py\nindex dd6af9f..c7d77b3 100644\n--- a/pkg/billing/invoice.py\n+++ b/pkg/billing/invoice.py\n@@ -1,6 +1,6 @@\n-def total(items, tax_rate):\n+def total(items: list[float], tax_rate: float) -> float:\n     return sum(items) * (1 + tax_rate)\n \n \n-def apply_discount(amount, pct):\n+def apply_discount(amount: float, pct: float) -> float:\n     return amount * (1 - pct / 100)\n",
+      "assumptions": "used built-in generic types (list/dict/float)"
+    },
+    "n2": {
+      "diff": "diff --git a/pkg/billing/ledger.py b/pkg/billing/ledger.py\nindex a786e06..7d6280b 100644\n--- a/pkg/billing/ledger.py\n+++ b/pkg/billing/ledger.py\n@@ -1,7 +1,7 @@\n-def record(entries, entry):\n+def record(entries: list[dict], entry: dict) -> list[dict]:\n     entries.append(entry)\n     return entries\n \n \n-def balance(entries):\n+def balance(entries: list[dict]) -> float:\n     return sum(e.get(\"amount\", 0) for e in entries)\n",
+      "assumptions": "used built-in generic types (list/dict/float)"
+    },
+    "n3": {
+      "diff": "diff --git a/pkg/billing/refunds.py b/pkg/billing/refunds.py\nindex eafbabc..60e8351 100644\n--- a/pkg/billing/refunds.py\n+++ b/pkg/billing/refunds.py\n@@ -1,6 +1,6 @@\n-def eligible(order, days_since_purchase):\n+def eligible(order: dict, days_since_purchase: int) -> bool:\n     return days_since_purchase <= 30 and not order.get(\"final_sale\")\n \n \n-def refund_amount(order, restocking_fee=0):\n+def refund_amount(order: dict, restocking_fee: float = 0) -> float:\n     return order.get(\"total\", 0) - restocking_fee\n",
+      "assumptions": "used built-in generic types (dict/float/int/bool)"
+    }
+  },
+  "poll_delays": 0
+}

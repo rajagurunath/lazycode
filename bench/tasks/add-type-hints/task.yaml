@@ -1,0 +1,12 @@
+# Benchmark task: add-type-hints (bench/README.md, DESIGN.md §14 benchmark suite)
+#
+# A stand-in for "add type hints to package X, >=10 files" -- three
+# independent, untyped modules in one package. Shape matters (per-file
+# fan-out with no cross-file deps), not literal file count, for M0's wave-
+# count accept criterion.
+name: add-type-hints
+goal: >-
+  Add PEP 484 type hints to every function signature in pkg/billing/*.py.
+  Do not change behavior.
+generator: generate.py
+verify_command: "python -m compileall -q pkg/billing"

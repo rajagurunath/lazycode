@@ -1,0 +1,6 @@
+name: docstring-pass
+goal: >-
+  Add a one-line Google-style docstring to every public function in
+  pkg/geo/*.py that currently has none. Do not change behavior.
+generator: generate.py
+verify_command: "python -m compileall -q pkg/geo"
