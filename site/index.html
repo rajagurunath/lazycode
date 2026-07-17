@@ -425,16 +425,15 @@ footer{padding:70px 0 50px;background:#160f1e;border-top:1px solid rgba(255,255,
     <div class="qs-block reveal">
       <div class="qs-head"><span>shell</span><button class="copy-btn" data-copy="qs-code">copy</button></div>
       <pre id="qs-code"><span class="c"># install</span>
-git clone https://github.com/rajagurunath/lazycode &amp;&amp; cd lazycode
-uv sync
+pip install lazycode-agent
 
 <span class="c"># hand over the backlog</span>
 cd /path/to/your-repo
 export ANTHROPIC_API_KEY=sk-ant-...
-uv run lazycode run <span class="b">"add type hints to services/"</span> --verify <span class="b">"pytest -q"</span>
+lazycode run <span class="b">"add type hints to services/"</span> --verify <span class="b">"pytest -q"</span>
 
 <span class="c"># approve the plan, close the laptop. in the morning:</span>
-uv run lazycode review jb_7f3a</pre>
+lazycode review jb_7f3a</pre>
     </div>
 
     <table class="cmd-table reveal">

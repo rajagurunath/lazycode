@@ -9,22 +9,21 @@ Status: pre-alpha, milestone M0 complete. Full design: [docs/DESIGN.md](docs/DES
 ## Quickstart
 
 ```bash
-git clone <this repo> && cd lazycode
-uv sync
+pip install lazycode-agent   # or: uv tool install lazycode-agent
 
 cd /path/to/your-repo   # any git repo with at least one commit
 export ANTHROPIC_API_KEY=sk-ant-...
 
-uv run lazycode run "add type hints to package X" --yes
+lazycode run "add type hints to package X" --yes
 # ┌─ Plan (logical) ────────────────────────────────────┐
 # │ ...                                                   │
 # └────────────────────────────────────────────────────┘
 # ... waves run, a branch + report.md land in .lazycode/ ...
 
-uv run lazycode status <job-id>     # per-node detail
-uv run lazycode explain <job-id>    # logical + physical plan trees
-uv run lazycode review <job-id>     # branches, verification, assumption ledger
-uv run lazycode resume <job-id>     # after a crash / kill -9 / restart
+lazycode status <job-id>     # per-node detail
+lazycode explain <job-id>    # logical + physical plan trees
+lazycode review <job-id>     # branches, verification, assumption ledger
+lazycode resume <job-id>     # after a crash / kill -9 / restart
 ```
 
 `--verify` overrides the `[verify].command` from `lazycode.toml`; `--model`/`--max-waves` override defaults; no daemon is required (`run`/`resume` host the orchestrator in-process — see `docs/DESIGN.md` §2 for the daemon-mode alternative). Repo-local config lives in `lazycode.toml` (checked in), provider keys live in `~/.config/lazycode/config.toml` (never checked in) — see Appendix B2.
