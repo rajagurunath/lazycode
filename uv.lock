@@ -207,7 +207,7 @@ wheels = [
 ]
 
 [[package]]
-name = "lazycode"
+name = "lazycode-agent"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
