@@ -4,7 +4,7 @@
 
 Not a pair programmer — the night shift. Point it at backlog burn-down (test coverage, migrations, lint eradication, mass refactors), close your laptop, review branches in the morning.
 
-Status: pre-alpha, milestone M0 in progress. Full design: [docs/DESIGN.md](docs/DESIGN.md).
+Status: pre-alpha, milestone M0 complete. Full design: [docs/DESIGN.md](docs/DESIGN.md) · Landing page: [rajagurunath.github.io/lazycode](https://rajagurunath.github.io/lazycode/).
 
 ## Quickstart
 
