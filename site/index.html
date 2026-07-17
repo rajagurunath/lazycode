@@ -3,32 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>lazycode — your backlog, done by morning</title>
-<meta name="description" content="lazycode is an open-source coding agent that plans with a realtime model and executes on batch APIs — half price, 24-hour SLA. The night shift for your backlog.">
+<title>lazycode — some things can happen slowly</title>
+<meta name="description" content="lazycode is an open-source coding agent that plans with a realtime model and executes on batch APIs overnight — half the price, no hurry. Slow software for slow evenings.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌙</text></svg>">
 <style>
 :root{
-  --night-deep:#0b1026;
-  --night:#111834;
-  --surface:#182040;
-  --surface-2:#1f2950;
-  --line:#2b3563;
-  --moon-text:#e9edff;
-  --dim-text:#9aa5cf;
-  --faint-text:#6a76a8;
-  --batch:#8fa8ff;      /* moonlight blue — batch / cheap / overnight */
-  --batch-dim:#4a5da8;
-  --realtime:#ffb454;   /* amber — realtime / immediate / expensive */
-  --dawn-hot:#ff8e5e;
-  --ok:#6ee7a0;
-  --danger:#ff7b7b;
-  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-  --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
-  --display:"Bricolage Grotesque",var(--sans);
-  --max:1080px;
+  --ink:#0a0f24;
+  --night:#0d1330;
+  --night-2:#121a3d;
+  --surface:#161e42;
+  --line:#28335f;
+  --text:#e8ebfa;
+  --dim:#98a2cc;
+  --faint:#66719f;
+  --amber:#f2b263;      /* lamplight — realtime, warmth, now */
+  --amber-soft:#ffd9a0;
+  --blue:#8fa8ff;       /* moonlight — batch, patience, later */
+  --blue-dim:#46589f;
+  --ok:#79d9a4;
+  --dawn:#e78a55;
+  --serif:"Shippori Mincho",Georgia,serif;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --max:1040px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
@@ -36,301 +36,427 @@ html{scroll-behavior:smooth}
   html{scroll-behavior:auto}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
-body{
-  font-family:var(--sans);
-  color:var(--moon-text);
-  background:var(--night-deep);
-  line-height:1.6;
-  overflow-x:hidden;
-}
-/* The page is the overnight shift: one gradient from night to dawn spans the whole document. */
-.shift{
-  background:linear-gradient(180deg,
-    #0b1026 0%, #0b1026 30%,
-    #111834 52%, #171d3d 68%,
-    #2a2350 80%, #4d2e55 88%,
-    #8a4550 94%, #c96b4a 98%, #e8894d 100%);
-}
-::selection{background:var(--batch);color:var(--night-deep)}
-a{color:var(--batch);text-decoration:none}
+body{font-family:var(--sans);color:var(--text);background:var(--ink);line-height:1.65;overflow-x:hidden}
+::selection{background:var(--amber);color:var(--ink)}
+a{color:var(--blue);text-decoration:none}
 a:hover{text-decoration:underline}
-:focus-visible{outline:2px solid var(--realtime);outline-offset:3px;border-radius:2px}
+:focus-visible{outline:2px solid var(--amber);outline-offset:3px;border-radius:2px}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 26px}
 
-.wrap{max-width:var(--max);margin:0 auto;padding:0 24px}
+/* the whole page is one slow evening: night above, dawn at the very end */
+.evening{background:linear-gradient(180deg,
+  #0a0f24 0%, #0a0f24 42%, #0e142f 60%, #131638 74%,
+  #251d47 84%, #4b2d51 91%, #93504b 96%, #d97e4e 100%)}
+
+/* film grain — analog quiet */
+.grain{position:fixed;inset:-50%;width:200%;height:200%;pointer-events:none;z-index:90;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 
 /* ---------- nav ---------- */
-nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);background:rgba(11,16,38,.72);border-bottom:1px solid rgba(43,53,99,.5)}
-.nav-inner{display:flex;align-items:center;gap:28px;height:60px}
-.wordmark{font-family:var(--mono);font-weight:600;font-size:17px;color:var(--moon-text);letter-spacing:-.02em}
-.wordmark .lazy{color:var(--batch)}
+nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:rgba(10,15,36,.7);border-bottom:1px solid rgba(40,51,95,.5)}
+.nav-inner{display:flex;align-items:center;gap:26px;height:62px}
+.wordmark{font-family:var(--mono);font-weight:500;font-size:16px;color:var(--text);letter-spacing:.01em}
+.wordmark .lazy{color:var(--blue)}
 .nav-links{display:flex;gap:22px;margin-left:auto;align-items:center}
-.nav-links a{font-family:var(--mono);font-size:13px;color:var(--dim-text)}
-.nav-links a:hover{color:var(--moon-text);text-decoration:none}
-.gh-btn{border:1px solid var(--line);border-radius:8px;padding:7px 14px;color:var(--moon-text)!important;transition:border-color .2s,background .2s}
-.gh-btn:hover{border-color:var(--batch);background:rgba(143,168,255,.08)}
-/* clock chip — ticks from 23:00 to 07:00 as you scroll the night away */
-.clock{font-family:var(--mono);font-size:13px;color:var(--dim-text);display:flex;gap:8px;align-items:center;min-width:92px}
-.clock .glyph{font-size:14px}
+.nav-links a{font-family:var(--mono);font-size:12.5px;color:var(--dim)}
+.nav-links a:hover{color:var(--text);text-decoration:none}
+.gh-btn{border:1px solid var(--line);border-radius:8px;padding:7px 14px;color:var(--text)!important;transition:border-color .3s}
+.gh-btn:hover{border-color:var(--blue)}
+.clock{font-family:var(--mono);font-size:12.5px;color:var(--dim);display:flex;gap:8px;align-items:center;min-width:88px}
 
 /* ---------- hero ---------- */
-.hero{padding:96px 0 72px;position:relative}
-.stars{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-.stars span{position:absolute;width:2px;height:2px;border-radius:50%;background:#dfe6ff;opacity:.5;animation:twinkle 4s ease-in-out infinite}
-@keyframes twinkle{0%,100%{opacity:.15}50%{opacity:.7}}
-.eyebrow{font-family:var(--mono);font-size:13px;letter-spacing:.06em;color:var(--batch);margin-bottom:20px}
-.eyebrow::before{content:"$ ";color:var(--faint-text)}
-h1{
-  font-family:var(--display);
-  font-size:clamp(44px,7vw,84px);
-  font-weight:700;
-  line-height:1.02;
-  letter-spacing:-.03em;
-  max-width:14ch;
-}
-h1 .dawn-word{background:linear-gradient(100deg,var(--dawn-hot),var(--realtime));-webkit-background-clip:text;background-clip:text;color:transparent}
-.hero-sub{font-size:19px;color:var(--dim-text);max-width:56ch;margin:26px 0 8px}
-.hero-sub strong{color:var(--moon-text);font-weight:500}
-.hero-legend{display:flex;gap:22px;margin:18px 0 34px;font-family:var(--mono);font-size:12.5px;color:var(--faint-text);flex-wrap:wrap}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:1px}
-.dot.rt{background:var(--realtime)}
-.dot.bt{background:var(--batch)}
+.hero{padding:88px 0 40px;position:relative}
+.hero-grid{display:grid;grid-template-columns:1.02fr .98fr;gap:56px;align-items:center}
+.eyebrow{font-family:var(--mono);font-size:12.5px;letter-spacing:.14em;color:var(--blue);text-transform:uppercase;margin-bottom:26px}
+h1{font-family:var(--serif);font-weight:600;font-size:clamp(38px,5.4vw,62px);line-height:1.18;letter-spacing:.005em}
+h1 em{font-style:normal;color:var(--amber-soft)}
+.hero-sub{font-size:17.5px;color:var(--dim);max-width:52ch;margin:28px 0 8px}
+.hero-sub strong{color:var(--text);font-weight:500}
+.hero-legend{display:flex;gap:20px;margin:18px 0 36px;font-family:var(--mono);font-size:12px;color:var(--faint);flex-wrap:wrap}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:1px}
+.dot.rt{background:var(--amber)}.dot.bt{background:var(--blue)}
 .cta-row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
-.btn{font-family:var(--mono);font-size:14px;font-weight:500;padding:13px 22px;border-radius:9px;display:inline-flex;align-items:center;gap:9px;transition:transform .15s,box-shadow .2s}
+.btn{font-family:var(--mono);font-size:13.5px;padding:13px 22px;border-radius:9px;display:inline-flex;gap:9px;transition:transform .3s,box-shadow .4s}
 .btn:hover{text-decoration:none;transform:translateY(-1px)}
-.btn-primary{background:var(--batch);color:#0b1026}
-.btn-primary:hover{box-shadow:0 6px 24px rgba(143,168,255,.35)}
-.btn-ghost{border:1px solid var(--line);color:var(--moon-text)}
-.btn-ghost:hover{border-color:var(--batch)}
-.prealpha{font-family:var(--mono);font-size:12px;color:var(--faint-text);border:1px solid var(--line);border-radius:99px;padding:5px 12px}
+.btn-primary{background:var(--blue);color:var(--ink)}
+.btn-primary:hover{box-shadow:0 8px 28px rgba(143,168,255,.3)}
+.btn-ghost{border:1px solid var(--line);color:var(--text)}
+.btn-ghost:hover{border-color:var(--blue)}
+.prealpha{font-family:var(--mono);font-size:11.5px;color:var(--faint);border:1px solid var(--line);border-radius:99px;padding:5px 12px}
 
-/* ---------- terminal ---------- */
-.term{
-  margin-top:60px;
-  background:#0d1330;
-  border:1px solid var(--line);
-  border-radius:14px;
-  box-shadow:0 30px 80px rgba(0,0,0,.45);
+/* ---------- the window (hand-drawn scene, the page's signature) ---------- */
+.window-scene{position:relative}
+.window{
+  position:relative;aspect-ratio:4/4.6;max-width:470px;margin:0 auto;
+  border-radius:18px 18px 10px 10px;
+  border:10px solid #1b2248;border-bottom-width:0;
+  box-shadow:0 40px 90px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.05);
   overflow:hidden;
-  font-family:var(--mono);
-  font-size:13.5px;
-  line-height:1.7;
+  background:
+    radial-gradient(90px 90px at 78% 16%, rgba(242,178,99,.28), transparent 70%),
+    radial-gradient(46px 46px at 22% 30%, rgba(143,168,255,.20), transparent 70%),
+    radial-gradient(30px 30px at 60% 42%, rgba(255,150,160,.13), transparent 70%),
+    radial-gradient(60px 60px at 38% 55%, rgba(242,178,99,.12), transparent 70%),
+    radial-gradient(26px 26px at 85% 52%, rgba(143,200,255,.14), transparent 70%),
+    radial-gradient(40px 40px at 10% 62%, rgba(255,196,120,.10), transparent 70%),
+    linear-gradient(180deg,#0c1233 0%, #101740 55%, #1a1a44 78%, #241c46 100%);
 }
-.term-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.02)}
-.term-bar i{width:11px;height:11px;border-radius:50%;background:var(--line);display:inline-block}
-.term-bar span{font-size:12px;color:var(--faint-text);margin-left:8px}
-.term-body{padding:20px 22px;min-height:380px;white-space:pre-wrap;overflow-x:auto}
-.term-body .p{color:var(--faint-text)}
-.term-body .cmd{color:var(--moon-text)}
-.term-body .rt{color:var(--realtime)}
-.term-body .bt{color:var(--batch)}
+/* moon */
+.window .moon{position:absolute;top:9%;left:20%;width:44px;height:44px;border-radius:50%;
+  background:radial-gradient(circle at 38% 35%, #fff7e8, #f0e2bf 60%, #d9c79b);
+  box-shadow:0 0 40px 14px rgba(240,226,191,.25);animation:moonDrift 60s ease-in-out infinite alternate}
+@keyframes moonDrift{to{transform:translate(14px,6px)}}
+/* skyline silhouette */
+.window .city{position:absolute;left:0;right:0;bottom:26%;height:30%;
+  background:
+    linear-gradient(transparent 0 40%, #0a0e26 40%) ,
+    repeating-linear-gradient(90deg,#0a0e26 0 26px, #0b1029 26px 38px, #0a0e26 38px 64px, #0d1230 64px 90px);
+  -webkit-mask:linear-gradient(180deg,transparent 0, #000 30%);mask:linear-gradient(180deg,transparent 0, #000 30%)}
+.window .citylights{position:absolute;left:0;right:0;bottom:26%;height:22%;
+  background-image:
+    radial-gradient(2px 2px at 12% 62%, rgba(255,214,140,.9), transparent 60%),
+    radial-gradient(2px 2px at 21% 78%, rgba(255,190,120,.7), transparent 60%),
+    radial-gradient(2px 2px at 33% 55%, rgba(180,210,255,.75), transparent 60%),
+    radial-gradient(2px 2px at 44% 70%, rgba(255,214,140,.8), transparent 60%),
+    radial-gradient(2px 2px at 57% 60%, rgba(255,170,150,.7), transparent 60%),
+    radial-gradient(2px 2px at 68% 76%, rgba(255,214,140,.85), transparent 60%),
+    radial-gradient(2px 2px at 79% 58%, rgba(190,215,255,.7), transparent 60%),
+    radial-gradient(2px 2px at 90% 72%, rgba(255,200,130,.8), transparent 60%);
+  animation:flicker 7s ease-in-out infinite alternate}
+@keyframes flicker{0%{opacity:.75}50%{opacity:1}100%{opacity:.85}}
+/* rain on the glass — two drifting sheets */
+.window .rain,.window .rain2{position:absolute;inset:-20% 0;pointer-events:none;
+  background:repeating-linear-gradient(102deg, transparent 0 22px, rgba(190,205,255,.10) 22px 23px, transparent 23px 46px);
+  animation:rainfall 2.6s linear infinite}
+.window .rain2{background:repeating-linear-gradient(99deg, transparent 0 34px, rgba(190,205,255,.07) 34px 35px, transparent 35px 62px);
+  animation-duration:3.8s}
+@keyframes rainfall{to{transform:translateY(46px)}}
+/* muntins */
+.window .bar-v{position:absolute;top:0;bottom:22%;left:50%;width:8px;margin-left:-4px;background:#1b2248;box-shadow:0 0 14px rgba(0,0,0,.4)}
+.window .bar-h{position:absolute;left:0;right:0;top:46%;height:8px;background:#1b2248;box-shadow:0 0 14px rgba(0,0,0,.4)}
+/* condensation glow at bottom of glass */
+.window .mist{position:absolute;left:0;right:0;bottom:22%;height:18%;
+  background:linear-gradient(180deg,transparent,rgba(150,170,255,.08));filter:blur(2px)}
+/* sill */
+.window .sill{position:absolute;left:-12px;right:-12px;bottom:0;height:22%;
+  background:linear-gradient(180deg,#232a55 0,#1b2148 22%,#161c3e 100%);
+  border-top:6px solid #2a3260;border-radius:2px}
+/* lamp glow washing in from the right (the room, our side of the glass) */
+.window .lampglow{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(75% 60% at 108% 82%, rgba(242,178,99,.34), transparent 62%);
+  animation:breatheGlow 9s ease-in-out infinite}
+@keyframes breatheGlow{0%,100%{opacity:.85}50%{opacity:1}}
+/* objects on the sill */
+.sill-svg{position:absolute;left:0;right:0;bottom:0;width:100%;height:34%;pointer-events:none}
+.steam path{fill:none;stroke:rgba(232,235,250,.4);stroke-width:2.4;stroke-linecap:round;
+  stroke-dasharray:60;animation:steam 7s ease-in-out infinite}
+.steam path:nth-child(2){animation-delay:2.3s}
+.steam path:nth-child(3){animation-delay:4.6s}
+@keyframes steam{
+  0%{stroke-dashoffset:60;opacity:0;transform:translateY(6px)}
+  30%{opacity:.8}
+  70%{opacity:.35}
+  100%{stroke-dashoffset:-60;opacity:0;transform:translateY(-10px)}
+}
+.cat-breathe{animation:catBreathe 5.5s ease-in-out infinite;transform-origin:center 88%}
+@keyframes catBreathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.035)}}
+.window-caption{font-family:var(--mono);font-size:12px;color:var(--faint);text-align:center;margin-top:20px}
+.window-caption b{color:var(--blue);font-weight:400}
+
+/* ---------- manifesto ---------- */
+.manifesto{padding:150px 0 120px;text-align:center}
+.manifesto p{font-family:var(--serif);font-weight:500;font-size:clamp(26px,3.6vw,40px);line-height:1.55;color:var(--text);max-width:24ch;margin:0 auto}
+.manifesto p+p{margin-top:64px}
+.manifesto .quiet{color:var(--dim);font-size:clamp(20px,2.6vw,28px);max-width:36ch}
+.manifesto .warm em{font-style:normal;color:var(--amber-soft)}
+.manifesto .sig{font-family:var(--mono);font-size:12.5px;letter-spacing:.14em;color:var(--faint);margin-top:80px;text-transform:uppercase;max-width:none;white-space:nowrap}
+
+/* ---------- shared section chrome ---------- */
+section{padding:110px 0}
+.sec-eyebrow{font-family:var(--mono);font-size:12px;color:var(--blue);letter-spacing:.16em;text-transform:uppercase;margin-bottom:18px}
+h2{font-family:var(--serif);font-size:clamp(30px,4.2vw,46px);font-weight:600;line-height:1.2;max-width:24ch}
+.sec-sub{color:var(--dim);font-size:16.5px;max-width:60ch;margin-top:20px}
+.sec-sub code,.note code,.flow p code{font-family:var(--mono);font-size:.88em;background:rgba(143,168,255,.1);padding:2px 6px;border-radius:5px;color:var(--blue)}
+
+/* ---------- an evening with lazycode (terminal as story) ---------- */
+.term{margin-top:56px;background:#0b102b;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  font-family:var(--mono);font-size:13.5px;line-height:1.75;box-shadow:0 30px 70px rgba(0,0,0,.4)}
+.term-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.term-bar i{width:11px;height:11px;border-radius:50%;background:var(--line)}
+.term-bar span{font-size:12px;color:var(--faint);margin-left:8px}
+.term-body{padding:20px 22px;min-height:360px;white-space:pre-wrap;overflow-x:auto}
+.term-body .cmd{color:var(--text)}
+.term-body .rt{color:var(--amber)}
+.term-body .bt{color:var(--blue)}
 .term-body .ok{color:var(--ok)}
-.term-body .dim{color:var(--dim-text)}
-.term-body .tree{color:var(--faint-text)}
-.cursor{display:inline-block;width:8px;height:16px;background:var(--batch);vertical-align:-2px;animation:blink 1s step-end infinite}
+.term-body .dim{color:var(--dim)}
+.term-body .tree{color:var(--faint)}
+.cursor{display:inline-block;width:8px;height:16px;background:var(--blue);vertical-align:-2px;animation:blink 1.2s step-end infinite}
 @keyframes blink{50%{opacity:0}}
 
-/* ---------- sections ---------- */
-section{padding:110px 0}
-.sec-eyebrow{font-family:var(--mono);font-size:13px;color:var(--batch);letter-spacing:.06em;margin-bottom:16px}
-h2{font-family:var(--display);font-size:clamp(30px,4.4vw,48px);font-weight:650;letter-spacing:-.02em;line-height:1.1;max-width:22ch}
-.sec-sub{color:var(--dim-text);font-size:17px;max-width:62ch;margin-top:18px}
-.sec-sub code,.card p code,.note code{font-family:var(--mono);font-size:.88em;background:rgba(143,168,255,.1);padding:2px 6px;border-radius:5px;color:var(--batch)}
-
-/* pipeline steps — a real sequence, so it earns its numbers */
-.pipeline{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:54px}
-.step{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px;position:relative;transition:transform .2s,border-color .2s}
-.step:hover{transform:translateY(-3px);border-color:var(--batch-dim)}
-.step .n{font-family:var(--mono);font-size:12px;color:var(--faint-text)}
-.step h3{font-family:var(--display);font-size:19px;font-weight:600;margin:10px 0 8px}
-.step p{font-size:14px;color:var(--dim-text);line-height:1.55}
-.step .tag{position:absolute;top:22px;right:20px;font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;padding:3px 8px;border-radius:5px}
-.tag.rt{background:rgba(255,180,84,.12);color:var(--realtime)}
-.tag.bt{background:rgba(143,168,255,.12);color:var(--batch)}
+/* ---------- architecture: flowing list, not card grid ---------- */
+.flow{margin-top:64px}
+.flow-item{display:grid;grid-template-columns:120px 1fr;gap:34px;padding:40px 0;border-top:1px solid var(--line);align-items:baseline}
+.flow-item:last-child{border-bottom:1px solid var(--line)}
+.flow-num{font-family:var(--serif);font-size:44px;font-weight:400;color:var(--blue-dim);line-height:1}
+.flow-num small{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;margin-top:10px}
+.flow-num small.rt{color:var(--amber)}.flow-num small.bt{color:var(--blue)}.flow-num small.n{color:var(--faint)}
+.flow h3{font-family:var(--serif);font-size:23px;font-weight:600;margin-bottom:10px}
+.flow p{font-size:15px;color:var(--dim);max-width:58ch}
 
 /* ---------- DAG ---------- */
-.dag-frame{margin-top:64px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:34px 24px 20px;overflow-x:auto}
-.dag-frame h4{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--dim-text);margin-bottom:6px;text-align:center}
-.dag-frame .hint{font-family:var(--mono);font-size:11.5px;color:var(--faint-text);text-align:center;margin-top:10px}
+.dag-frame{margin-top:64px;background:rgba(22,30,66,.5);border:1px solid var(--line);border-radius:16px;padding:34px 24px 20px;overflow-x:auto}
+.dag-frame h4{font-family:var(--mono);font-size:12.5px;font-weight:400;color:var(--dim);margin-bottom:6px;text-align:center}
+.dag-frame .hint{font-family:var(--mono);font-size:11.5px;color:var(--faint);text-align:center;margin-top:12px}
 #dag{display:block;margin:0 auto;max-width:100%}
-#dag .node rect{fill:var(--surface-2);stroke:var(--line);stroke-width:1.2;rx:8}
-#dag .node text{font-family:var(--mono);font-size:11.5px;fill:var(--dim-text)}
-#dag .node .op{font-size:12.5px;font-weight:600;fill:var(--moon-text)}
+#dag .node rect{fill:#1a2350;stroke:var(--line);stroke-width:1.2;rx:8}
+#dag .node text{font-family:var(--mono);font-size:11.5px;fill:var(--dim)}
+#dag .node .op{font-size:12.5px;font-weight:600;fill:var(--text)}
 #dag .edge{stroke:var(--line);stroke-width:1.4;fill:none;marker-end:url(#arr)}
-#dag .wavelabel{font-family:var(--mono);font-size:11px;fill:var(--faint-text)}
-#dag .wavebox{fill:none;stroke:var(--batch-dim);stroke-dasharray:5 5;stroke-width:1;rx:12;opacity:.5}
-#dag.play .w0 rect{animation:lightRt .8s ease forwards}
-#dag.play .w1 rect{animation:lightBt .8s ease forwards;animation-delay:.9s}
-#dag.play .w2 rect{animation:lightBt .8s ease forwards;animation-delay:1.8s}
-#dag.play .w3 rect{animation:lightOk .8s ease forwards;animation-delay:2.7s}
-@keyframes lightRt{to{stroke:var(--realtime);fill:#2a2440}}
-@keyframes lightBt{to{stroke:var(--batch);fill:#1e2a55}}
+#dag .wavelabel{font-family:var(--mono);font-size:11px;fill:var(--faint)}
+#dag .wavebox{fill:none;stroke:var(--blue-dim);stroke-dasharray:5 5;stroke-width:1;rx:12;opacity:.5}
+#dag.play .w0 rect{animation:lightRt 1.4s ease forwards}
+#dag.play .w1 rect{animation:lightBt 1.4s ease forwards;animation-delay:1.2s}
+#dag.play .w2 rect{animation:lightBt 1.4s ease forwards;animation-delay:2.4s}
+#dag.play .w3 rect{animation:lightOk 1.4s ease forwards;animation-delay:3.6s}
+@keyframes lightRt{to{stroke:var(--amber);fill:#2a2440}}
+@keyframes lightBt{to{stroke:var(--blue);fill:#1e2a55}}
 @keyframes lightOk{to{stroke:var(--ok);fill:#16324a}}
 
 /* ---------- economics ---------- */
 .econ-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;margin-top:56px;align-items:start}
-.slider-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:30px}
-.slider-card h3{font-family:var(--display);font-size:21px;font-weight:600;margin-bottom:4px}
-.slider-card .sub{font-family:var(--mono);font-size:12px;color:var(--faint-text);margin-bottom:26px}
-.lambda-row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--dim-text);margin-bottom:10px}
-input[type=range]{width:100%;appearance:none;-webkit-appearance:none;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--realtime),var(--batch));outline-offset:6px}
-input[type=range]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--moon-text);border:3px solid var(--night-deep);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:grab}
-input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--moon-text);border:3px solid var(--night-deep);cursor:grab}
-.readout{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:28px}
-.readout .cell{background:var(--night-deep);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
-.readout .k{font-family:var(--mono);font-size:11px;color:var(--faint-text);letter-spacing:.05em}
-.readout .v{font-family:var(--display);font-size:30px;font-weight:650;margin-top:4px}
-.readout .v small{font-size:15px;color:var(--dim-text);font-weight:400}
-#cost-v{color:var(--batch)}
-#time-v{color:var(--realtime)}
-.costbar{margin-top:22px;height:14px;border-radius:7px;background:var(--night-deep);border:1px solid var(--line);overflow:hidden}
-.costbar i{display:block;height:100%;background:linear-gradient(90deg,var(--dawn-hot),var(--realtime));width:100%;transition:width .25s ease;border-radius:7px}
-.econ-copy h3{font-family:var(--display);font-size:21px;font-weight:600;margin:26px 0 8px}
+.econ-copy h3{font-family:var(--serif);font-size:21px;font-weight:600;margin:30px 0 8px}
 .econ-copy h3:first-child{margin-top:0}
-.econ-copy p{color:var(--dim-text);font-size:15.5px}
-.econ-copy .hl{color:var(--moon-text)}
-.note{margin-top:26px;border-left:3px solid var(--realtime);background:rgba(255,180,84,.06);padding:14px 18px;border-radius:0 10px 10px 0;font-size:14px;color:var(--dim-text)}
+.econ-copy p{color:var(--dim);font-size:15.5px}
+.econ-copy .hl{color:var(--text)}
+.note{margin-top:30px;border-left:2px solid var(--amber);background:rgba(242,178,99,.06);padding:16px 20px;border-radius:0 10px 10px 0;font-size:14px;color:var(--dim)}
+.slider-card{background:rgba(22,30,66,.5);border:1px solid var(--line);border-radius:16px;padding:32px}
+.slider-card h3{font-family:var(--serif);font-size:22px;font-weight:600;margin-bottom:4px}
+.slider-card .sub{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-bottom:28px}
+.lambda-row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11.5px;color:var(--dim);margin-bottom:12px}
+input[type=range]{width:100%;appearance:none;-webkit-appearance:none;height:5px;border-radius:3px;background:linear-gradient(90deg,var(--amber),var(--blue))}
+input[type=range]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--text);border:3px solid var(--ink);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:grab}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--text);border:3px solid var(--ink);cursor:grab}
+.readout{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:28px}
+.readout .cell{background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.readout .k{font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.1em}
+.readout .v{font-family:var(--serif);font-size:30px;font-weight:600;margin-top:4px}
+.readout .v small{font-size:15px;color:var(--dim);font-weight:400}
+#cost-v{color:var(--blue)}
+#time-v{color:var(--amber);font-size:21px;line-height:2}
+.costbar{margin-top:22px;height:12px;border-radius:6px;background:var(--ink);border:1px solid var(--line);overflow:hidden}
+.costbar i{display:block;height:100%;background:linear-gradient(90deg,var(--dawn),var(--amber));width:100%;transition:width .5s ease;border-radius:6px}
 
-/* ---------- durability cards ---------- */
-.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:54px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px;transition:border-color .2s}
-.card:hover{border-color:var(--batch-dim)}
-.card .glyph{font-family:var(--mono);font-size:13px;color:var(--batch);margin-bottom:14px;display:block}
-.card h3{font-family:var(--display);font-size:19px;font-weight:600;margin-bottom:8px}
-.card p{font-size:14.5px;color:var(--dim-text)}
+/* ---------- durability: ledger list ---------- */
+.ledger{margin-top:60px}
+.ledger-item{display:grid;grid-template-columns:250px 1fr;gap:34px;padding:34px 0;border-top:1px solid var(--line)}
+.ledger-item:last-child{border-bottom:1px solid var(--line)}
+.ledger-item .k{font-family:var(--mono);font-size:12.5px;color:var(--blue);padding-top:4px}
+.ledger-item h3{font-family:var(--serif);font-size:21px;font-weight:600;margin-bottom:8px}
+.ledger-item p{font-size:14.5px;color:var(--dim);max-width:60ch}
 
 /* ---------- quickstart (dawn) ---------- */
-#quickstart .sec-eyebrow{color:#ffd9a0}
-#quickstart h2,#quickstart .sec-sub{text-shadow:0 1px 30px rgba(11,16,38,.4)}
-.qs-block{margin-top:44px;background:rgba(11,16,38,.82);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.14);border-radius:14px;overflow:hidden}
-.qs-head{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid rgba(255,255,255,.1);font-family:var(--mono);font-size:12px;color:var(--dim-text)}
-.copy-btn{font-family:var(--mono);font-size:12px;background:none;border:1px solid var(--line);color:var(--dim-text);border-radius:6px;padding:4px 10px;cursor:pointer;transition:color .15s,border-color .15s}
-.copy-btn:hover{color:var(--moon-text);border-color:var(--batch)}
-.qs-block pre{padding:20px 22px;font-family:var(--mono);font-size:13.5px;line-height:1.8;overflow-x:auto;color:var(--moon-text)}
-.qs-block .c{color:var(--faint-text)}
-.qs-block .b{color:var(--batch)}
-.cmd-table{margin-top:34px;width:100%;border-collapse:collapse;font-size:14px}
-.cmd-table td{padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.12)}
-.cmd-table td:first-child{font-family:var(--mono);font-size:13px;color:#ffd9a0;white-space:nowrap;width:1%;padding-right:28px}
-.cmd-table td:last-child{color:var(--moon-text);opacity:.92}
-
-/* ---------- roadmap ---------- */
-.roadmap{display:flex;gap:0;margin-top:50px;overflow-x:auto;padding-bottom:8px}
-.mile{min-width:200px;flex:1;padding:0 18px 0 0;position:relative}
-.mile::before{content:"";position:absolute;top:7px;left:0;right:0;height:2px;background:var(--line)}
+#quickstart .sec-eyebrow{color:#ffe0b8}
+.qs-block{margin-top:46px;background:rgba(10,15,36,.85);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.14);border-radius:14px;overflow:hidden}
+.qs-head{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid rgba(255,255,255,.1);font-family:var(--mono);font-size:12px;color:var(--dim)}
+.copy-btn{font-family:var(--mono);font-size:12px;background:none;border:1px solid var(--line);color:var(--dim);border-radius:6px;padding:4px 10px;cursor:pointer;transition:color .3s,border-color .3s}
+.copy-btn:hover{color:var(--text);border-color:var(--blue)}
+.qs-block pre{padding:20px 22px;font-family:var(--mono);font-size:13.5px;line-height:1.85;overflow-x:auto;color:var(--text)}
+.qs-block .c{color:#8b87b8}
+.qs-block .b{color:var(--blue)}
+.cmd-table{margin-top:36px;width:100%;border-collapse:collapse;font-size:14px}
+.cmd-table td{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.14)}
+.cmd-table td:first-child{font-family:var(--mono);font-size:13px;color:#ffe0b8;white-space:nowrap;width:1%;padding-right:30px}
+.cmd-table td:last-child{color:var(--text);opacity:.94}
+.roadmap{display:flex;margin-top:56px;overflow-x:auto;padding-bottom:8px}
+.mile{min-width:200px;flex:1;padding-right:18px;position:relative}
+.mile::before{content:"";position:absolute;top:7px;left:0;right:0;height:2px;background:rgba(250,238,228,.28)}
 .mile.done::before{background:var(--ok)}
-.mile .pin{width:14px;height:14px;border-radius:50%;background:var(--night-deep);border:2px solid var(--line);position:relative;z-index:1;margin-bottom:14px}
+.mile .pin{width:14px;height:14px;border-radius:50%;background:var(--ink);border:2px solid rgba(250,238,228,.4);position:relative;z-index:1;margin-bottom:14px}
 .mile.done .pin{background:var(--ok);border-color:var(--ok)}
-.mile.now .pin{border-color:var(--realtime);background:var(--realtime)}
-.mile h4{font-family:var(--mono);font-size:13px;color:var(--moon-text);margin-bottom:6px}
-.mile p{font-size:13px;color:var(--faint-text);line-height:1.5;padding-right:10px}
-/* the roadmap sits on the dawn gradient — faint blue is unreadable there */
-#quickstart .mile p{color:rgba(250,238,228,.82)}
-#quickstart .mile::before{background:rgba(250,238,228,.28)}
-#quickstart .mile.done::before{background:var(--ok)}
+.mile.now .pin{border-color:var(--amber);background:var(--amber)}
+.mile h4{font-family:var(--mono);font-size:12.5px;color:var(--text);margin-bottom:6px}
+.mile p{font-size:13px;color:rgba(250,238,228,.82);line-height:1.5;padding-right:10px}
 
 /* ---------- footer ---------- */
-footer{padding:70px 0 50px;background:#160f1e;border-top:1px solid rgba(255,255,255,.08)}
+footer{padding:70px 0 54px;background:#140e1d;border-top:1px solid rgba(255,255,255,.08)}
 .foot{display:flex;justify-content:space-between;align-items:flex-start;gap:30px;flex-wrap:wrap}
 .foot .wordmark{font-size:15px}
-.foot p{font-family:var(--mono);font-size:12.5px;color:var(--faint-text);margin-top:10px;max-width:44ch}
+.foot p{font-family:var(--mono);font-size:12.5px;color:var(--faint);margin-top:12px;max-width:46ch}
 .foot-links{display:flex;gap:22px;font-family:var(--mono);font-size:13px}
 
-.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
+/* slow reveals */
+.reveal{opacity:0;transform:translateY(22px);transition:opacity 1.1s ease,transform 1.1s ease}
 .reveal.in{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none}}
 
 @media (max-width:900px){
-  .pipeline{grid-template-columns:repeat(2,1fr)}
+  .hero-grid{grid-template-columns:1fr}
+  .window{max-width:400px}
   .econ-grid{grid-template-columns:1fr}
-  .cards{grid-template-columns:1fr}
+  .flow-item{grid-template-columns:1fr;gap:12px}
+  .ledger-item{grid-template-columns:1fr;gap:8px}
   .nav-links a:not(.gh-btn){display:none}
   section{padding:80px 0}
+  .manifesto{padding:110px 0 90px}
 }
 </style>
 </head>
 <body>
-<div class="shift">
+<div class="grain" aria-hidden="true"></div>
+<div class="evening">
 
 <nav>
   <div class="wrap nav-inner">
     <a href="#" class="wordmark" aria-label="lazycode home"><span class="lazy">lazy</span>code</a>
     <div class="nav-links">
-      <a href="#architecture">architecture</a>
+      <a href="#how">how it works</a>
       <a href="#economics">economics</a>
       <a href="#durability">durability</a>
       <a href="#quickstart">quickstart</a>
       <a class="gh-btn" href="https://github.com/rajagurunath/lazycode">GitHub ↗</a>
     </div>
-    <div class="clock" aria-hidden="true"><span class="glyph" id="clock-glyph">🌙</span><span id="clock-time">23:00</span></div>
+    <div class="clock" aria-hidden="true"><span id="clock-glyph">🌙</span><span id="clock-time">23:00</span></div>
   </div>
 </nav>
 
 <header class="hero">
-  <div class="stars" id="stars" aria-hidden="true"></div>
-  <div class="wrap">
-    <p class="eyebrow">the night shift for your backlog</p>
-    <h1>Your backlog,<br>done by <span class="dawn-word">morning</span>.</h1>
-    <p class="hero-sub"><strong>lazycode</strong> is an open-source coding agent that plans with a realtime model and executes on provider <strong>batch APIs</strong> — half the price, 24-hour SLA. Not a pair programmer: point it at the work that can wait until dawn, close your laptop, review branches over coffee.</p>
-    <div class="hero-legend">
-      <span><i class="dot rt"></i>realtime — plans now, costs full price</span>
-      <span><i class="dot bt"></i>batch — executes overnight, costs half</span>
-    </div>
-    <div class="cta-row">
-      <a class="btn btn-primary" href="#quickstart">Start tonight →</a>
-      <a class="btn btn-ghost" href="https://github.com/rajagurunath/lazycode">Read the source</a>
-      <span class="prealpha">pre-alpha · M0 · Apache-2.0</span>
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">slow software · for slow evenings</p>
+      <h1>Some things can happen <em>slowly.</em></h1>
+      <p class="hero-sub"><strong>lazycode</strong> is an open-source coding agent that plans with a realtime model, then does the actual work on <strong>batch APIs</strong> — overnight, at half the price. Hand over the backlog, make tea, go to bed. Branches are waiting by morning.</p>
+      <div class="hero-legend">
+        <span><i class="dot rt"></i>lamplight — realtime, for the plan</span>
+        <span><i class="dot bt"></i>moonlight — batch, for the work</span>
+      </div>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#quickstart">pip install lazycode-agent</a>
+        <a class="btn btn-ghost" href="https://github.com/rajagurunath/lazycode">Read the source</a>
+        <span class="prealpha">pre-alpha · M0 · Apache-2.0</span>
+      </div>
     </div>
 
-    <div class="term" role="img" aria-label="Terminal demo: lazycode plans a job, submits batch waves overnight, and delivers a reviewed branch by morning">
-      <div class="term-bar"><i></i><i></i><i></i><span>~/work/api-server</span></div>
-      <div class="term-body" id="term"></div>
-    </div>
+    <figure class="window-scene" aria-label="Hand-drawn illustration: a rainy window at night with city lights beyond; on the sill, a steaming cup of tea, a small plant, a sleeping cat and a closed laptop, all washed in warm lamplight">
+      <div class="window">
+        <div class="moon"></div>
+        <div class="city"></div>
+        <div class="citylights"></div>
+        <div class="rain"></div>
+        <div class="rain2"></div>
+        <div class="mist"></div>
+        <div class="bar-v"></div>
+        <div class="bar-h"></div>
+        <div class="sill"></div>
+        <div class="lampglow"></div>
+        <svg class="sill-svg" viewBox="0 0 470 160" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+          <!-- steam -->
+          <g class="steam" transform="translate(96,30)">
+            <path d="M2 46 C -6 34, 10 28, 2 16 C -4 8, 6 4, 3 -6"/>
+            <path d="M14 48 C 8 36, 22 30, 14 18 C 8 10, 18 6, 15 -2"/>
+            <path d="M26 46 C 20 36, 32 28, 25 18"/>
+          </g>
+          <!-- tea cup -->
+          <g transform="translate(78,84)">
+            <path d="M0 0 h52 a4 4 0 0 1 4 4 c0 16 -10 30 -30 30 c-20 0 -30 -14 -30 -30 a4 4 0 0 1 4 -4 z" fill="#2e3768"/>
+            <path d="M56 8 c12 0 16 6 14 12 c-2 7 -9 10 -17 9" fill="none" stroke="#2e3768" stroke-width="6"/>
+            <ellipse cx="26" cy="3" rx="26" ry="4" fill="#171d43"/>
+            <ellipse cx="26" cy="3" rx="20" ry="2.6" fill="#b98a4e" opacity=".85"/>
+            <ellipse cx="26" cy="40" rx="22" ry="4" fill="#0a0e26" opacity=".5"/>
+          </g>
+          <!-- small plant -->
+          <g transform="translate(190,66)">
+            <path d="M14 52 h24 l-4 22 h-16 z" fill="#2e3768"/>
+            <path d="M26 52 C 26 30, 12 32, 8 12 C 22 18, 27 32, 27 46 Z" fill="#3f7d6b"/>
+            <path d="M27 52 C 28 32, 44 34, 48 16 C 34 22, 28 34, 27 48 Z" fill="#356a5c"/>
+            <path d="M26 52 C 25 36, 24 28, 26 18 C 30 30, 29 40, 27 52 Z" fill="#4b8f78"/>
+            <ellipse cx="26" cy="76" rx="20" ry="3.6" fill="#0a0e26" opacity=".5"/>
+          </g>
+          <!-- sleeping cat -->
+          <g class="cat-breathe" transform="translate(268,84)">
+            <ellipse cx="52" cy="48" rx="54" ry="5" fill="#0a0e26" opacity=".55"/>
+            <path d="M10 44 C 2 30, 10 12, 34 8 C 58 4, 88 8, 96 22 C 103 34, 96 44, 82 46 C 60 49, 22 49, 10 44 Z" fill="#141a3a"/>
+            <path d="M96 22 C 106 18, 112 24, 108 34 C 105 41, 96 44, 88 42" fill="none" stroke="#141a3a" stroke-width="9" stroke-linecap="round"/>
+            <path d="M30 12 l6 -10 l7 8 z" fill="#141a3a"/>
+            <path d="M48 9 l5 -10 l8 7 z" fill="#141a3a"/>
+            <path d="M34 8 C 58 4, 88 8, 96 22" fill="none" stroke="#f2b263" stroke-width="2" stroke-linecap="round" opacity=".55"/>
+            <path d="M58 32 q5 4 10 0" fill="none" stroke="#2c355f" stroke-width="2" stroke-linecap="round"/>
+          </g>
+          <!-- closed laptop, lid light breathing -->
+          <g transform="translate(392,116)">
+            <rect x="0" y="0" width="64" height="7" rx="2.5" fill="#2e3768"/>
+            <rect x="4" y="-4" width="56" height="5" rx="2" fill="#232b58"/>
+            <circle cx="58" cy="-1.4" r="1.6" fill="#79d9a4">
+              <animate attributeName="opacity" values="1;.15;1" dur="4.5s" repeatCount="indefinite"/>
+            </circle>
+            <ellipse cx="32" cy="9" rx="30" ry="3" fill="#0a0e26" opacity=".5"/>
+          </g>
+        </svg>
+      </div>
+      <figcaption class="window-caption">23:47 · <b>wave 1 in flight</b> · nothing left to do but sleep</figcaption>
+    </figure>
   </div>
 </header>
 
-<section id="architecture">
-  <div class="wrap">
-    <p class="sec-eyebrow reveal">// architecture</p>
-    <h2 class="reveal">A query engine, not a chat loop.</h2>
-    <p class="sec-sub reveal">Chat agents burn tokens round-tripping one message at a time. lazycode treats your goal like a database treats SQL: build a <span style="color:var(--moon-text)">logical plan</span>, run it through an <span style="color:var(--moon-text)">optimizer</span>, compile a <span style="color:var(--moon-text)">physical plan</span>, then execute it in parallel <span style="color:var(--moon-text)">waves</span> on the batch API.</p>
+<div class="manifesto wrap">
+  <p class="reveal">We rush the wrong things.</p>
+  <p class="quiet reveal">Refactors don't need you hovering. Tests don't care if they finish at three in the morning. Migrations were never urgent — only postponed.</p>
+  <p class="warm reveal">Some work just needs time.<br>And time, it turns out, is <em>half price.</em></p>
+  <p class="sig reveal">— the case for lazy code</p>
+</div>
 
-    <div class="pipeline">
-      <div class="step reveal">
-        <span class="n">01</span><span class="tag rt">realtime</span>
-        <h3>Plan</h3>
-        <p>A realtime model reads your repo map and decomposes the goal into a DAG of typed operators — <code>Explore</code>, <code>Generate</code>, <code>Edit</code>, <code>Verify</code>, <code>Judge</code>, <code>Reduce</code>. You approve it before a cent is spent on execution.</p>
+<section id="evening">
+  <div class="wrap">
+    <p class="sec-eyebrow reveal">an evening with lazycode</p>
+    <h2 class="reveal">Ask once. Approve. Go live your evening.</h2>
+    <div class="term reveal" role="img" aria-label="Terminal demo: lazycode plans a job, submits batch waves overnight, and delivers a reviewed branch by morning">
+      <div class="term-bar"><i></i><i></i><i></i><span>~/work/api-server · 22:58</span></div>
+      <div class="term-body" id="term"></div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <p class="sec-eyebrow reveal">how it works</p>
+    <h2 class="reveal">It thinks fast, then works slow.</h2>
+    <p class="sec-sub reveal">Chat agents burn tokens round-tripping one message at a time, because you're sitting there waiting. Remove the waiting and a better shape appears: lazycode treats your goal like a database treats a query — plan, optimize, execute in parallel waves, verify.</p>
+
+    <div class="flow">
+      <div class="flow-item reveal">
+        <div class="flow-num">一<small class="rt">plan · realtime</small></div>
+        <div><h3>A short, bright moment of thought</h3>
+        <p>A realtime model reads your repo map and decomposes the goal into a DAG of typed operators — <code>Explore</code>, <code>Generate</code>, <code>Edit</code>, <code>Verify</code>, <code>Judge</code>, <code>Reduce</code>. You see the whole plan and approve it before a cent is spent on execution.</p></div>
       </div>
-      <div class="step reveal">
-        <span class="n">02</span>
-        <h3>Optimize</h3>
-        <p>Rule-based rewrites, straight out of a query optimizer: push work to local tools, prune context per node, factor shared prompt prefixes for cache hits, widen independent fan-out.</p>
+      <div class="flow-item reveal">
+        <div class="flow-num">二<small class="n">optimize</small></div>
+        <div><h3>The plan gets quietly better</h3>
+        <p>Rule-based rewrites, straight out of a query optimizer: push mechanical work to local tools, prune each node's context, factor shared prompt prefixes for cache hits, widen independent fan-out. Breadth is free — only depth costs time.</p></div>
       </div>
-      <div class="step reveal">
-        <span class="n">03</span><span class="tag bt">batch</span>
-        <h3>Execute in waves</h3>
-        <p>Every node whose dependencies are met ships in one batch submission. One wave can carry fifty file edits. The daemon persists everything, then waits — most batches finish in under an hour.</p>
+      <div class="flow-item reveal">
+        <div class="flow-num">三<small class="bt">execute · batch</small></div>
+        <div><h3>Waves roll through the night</h3>
+        <p>Every node whose dependencies are met ships in one batch submission — one wave can carry fifty file edits at half price. The daemon persists everything and waits without impatience; most waves finish within the hour.</p></div>
       </div>
-      <div class="step reveal">
-        <span class="n">04</span>
-        <h3>Verify &amp; land</h3>
-        <p>Results are harvested into git worktree sandboxes, diffs applied with three-way merge, your test command run per group. You get branches, a report, and an assumption ledger — not a wall of chat.</p>
+      <div class="flow-item reveal">
+        <div class="flow-num">四<small class="n">verify · land</small></div>
+        <div><h3>Morning finds it finished</h3>
+        <p>Results are harvested into git worktree sandboxes, diffs applied with three-way merge, your test command run per group. You wake to branches, a report, and an assumption ledger — not a wall of chat.</p></div>
       </div>
     </div>
 
     <div class="dag-frame reveal">
-      <h4>physical plan · job <span style="color:var(--batch)">jb_7f3a</span> · goal: "add type hints to services/"</h4>
+      <h4>physical plan · job <span style="color:var(--blue)">jb_7f3a</span> · goal: "add type hints to services/"</h4>
       <svg id="dag" viewBox="0 0 860 330" width="860" height="330" aria-label="Execution DAG: a realtime plan node fans out to four batch generate nodes, which converge into verify nodes and a final reduce node">
-        <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2b3563"/></marker></defs>
-        <!-- wave boxes -->
+        <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#28335f"/></marker></defs>
         <rect class="wavebox" x="18"  y="106" width="150" height="110"/>
         <text class="wavelabel" x="26" y="98">wave 0 · realtime</text>
         <rect class="wavebox" x="220" y="20" width="200" height="292"/>
-        <text class="wavelabel" x="228" y="12" dy="0">wave 1 · batch · 4 nodes</text>
+        <text class="wavelabel" x="228" y="12">wave 1 · batch · 4 nodes</text>
         <rect class="wavebox" x="480" y="60" width="170" height="212"/>
         <text class="wavelabel" x="488" y="52">wave 2 · batch</text>
         <rect class="wavebox" x="700" y="106" width="146" height="110"/>
         <text class="wavelabel" x="708" y="98">wave 3 · local</text>
-        <!-- edges -->
         <path class="edge" d="M168 148 C 200 120, 200 62, 236 55"/>
         <path class="edge" d="M168 155 C 196 140, 204 128, 236 124"/>
         <path class="edge" d="M168 168 C 196 182, 204 194, 236 197"/>
@@ -341,20 +467,16 @@ footer{padding:70px 0 50px;background:#160f1e;border-top:1px solid rgba(255,255,
         <path class="edge" d="M404 268 C 440 262, 448 228, 496 220"/>
         <path class="edge" d="M634 112 C 662 118, 668 138, 716 148"/>
         <path class="edge" d="M634 222 C 662 214, 668 190, 716 176"/>
-        <!-- wave 0 -->
         <g class="node w0"><rect x="34" y="128" width="118" height="64"/>
-          <text class="op" x="46" y="152">Decompose</text><text x="46" y="170">repo map → DAG</text><text x="46" y="184" fill="#ffb454">amber · $$</text></g>
-        <!-- wave 1: 4 generate nodes -->
+          <text class="op" x="46" y="152">Decompose</text><text x="46" y="170">repo map → DAG</text><text x="46" y="184" fill="#f2b263">lamplight · $$</text></g>
         <g class="node w1"><rect x="236" y="30" width="168" height="50"/><text class="op" x="248" y="50">Generate</text><text x="248" y="68">services/auth.py</text></g>
         <g class="node w1"><rect x="236" y="99" width="168" height="50"/><text class="op" x="248" y="119">Generate</text><text x="248" y="137">services/billing.py</text></g>
         <g class="node w1"><rect x="236" y="172" width="168" height="50"/><text class="op" x="248" y="192">Generate</text><text x="248" y="210">services/quota.py</text></g>
         <g class="node w1"><rect x="236" y="243" width="168" height="50"/><text class="op" x="248" y="263">Generate</text><text x="248" y="281">services/events.py</text></g>
-        <!-- wave 2 -->
         <g class="node w2"><rect x="496" y="80" width="138" height="56"/><text class="op" x="508" y="102">Verify</text><text x="508" y="120">mypy · group A</text></g>
         <g class="node w2"><rect x="496" y="190" width="138" height="56"/><text class="op" x="508" y="212">Verify</text><text x="508" y="230">mypy · group B</text></g>
-        <!-- wave 3 -->
         <g class="node w3"><rect x="716" y="128" width="118" height="64"/>
-          <text class="op" x="728" y="152">Reduce</text><text x="728" y="170">branch + report</text><text x="728" y="184" fill="#6ee7a0">✓ by 06:12</text></g>
+          <text class="op" x="728" y="152">Reduce</text><text x="728" y="170">branch + report</text><text x="728" y="184" fill="#79d9a4">✓ by 06:12</text></g>
       </svg>
       <p class="hint">independent nodes ride the same wave — one batch call, fifty files</p>
     </div>
@@ -363,29 +485,29 @@ footer{padding:70px 0 50px;background:#160f1e;border-top:1px solid rgba(255,255,
 
 <section id="economics">
   <div class="wrap">
-    <p class="sec-eyebrow reveal">// economics</p>
-    <h2 class="reveal">Honest math, measured against the strong baseline.</h2>
-    <p class="sec-sub reveal">Batch APIs are 50% off list price. Most tools would stop there. We don't — because realtime agents get <em>prompt-cache</em> discounts on input that batch mostly gives up. Here is where the savings actually come from.</p>
+    <p class="sec-eyebrow reveal">economics</p>
+    <h2 class="reveal">Patience is a discount.</h2>
+    <p class="sec-sub reveal">Batch APIs are 50% off list price. Most tools would stop there. We don't — because realtime agents get <em>prompt-cache</em> discounts on input that batch mostly gives up. Here is where the savings actually come from, measured honestly.</p>
 
     <div class="econ-grid">
       <div class="econ-copy reveal">
         <h3>Output tokens: a flat 50% win</h3>
         <p>Every token the model writes overnight costs half. No caveats. For generation-heavy work — new tests, migrations, mass refactors — this is the bulk of the bill.</p>
         <h3>Input tokens: won by depth collapse</h3>
-        <p>A chat agent re-reads the conversation every turn; caching makes that cheap (0.1× on cache hits). lazycode wins on input differently — <span class="hl">it collapses thirty chatty turns into a few wide waves</span>, so the context is simply read far fewer times. Fewer rounds beats cheaper re-reads.</p>
-        <h3>Scheduling: free parallelism</h3>
-        <p>Batch providers don't care if a wave carries one request or a thousand. The optimizer widens fan-out aggressively because breadth is free — only <em>depth</em> costs wall-clock time.</p>
-        <div class="note">We benchmark against Claude&nbsp;Code <em>with caching on</em> — the real alternative — not an uncached strawman. Typical result: <strong style="color:var(--moon-text)">30–70% cheaper</strong>, task-shape dependent. The benchmark harness ships in the repo; run it yourself.</div>
+        <p>A chat agent re-reads the conversation every turn; caching makes that cheap (0.1× on hits). lazycode wins on input differently — <span class="hl">it collapses thirty hurried turns into a few wide waves</span>, so the context is simply read far fewer times. Fewer rounds beats cheaper re-reads.</p>
+        <h3>Scheduling: breadth is free</h3>
+        <p>Batch providers don't care whether a wave carries one request or a thousand. The optimizer widens fan-out aggressively, because only <em>depth</em> costs wall-clock time — and the night is long anyway.</p>
+        <div class="note">We benchmark against Claude&nbsp;Code <em>with caching on</em> — the real alternative — not an uncached strawman. Typical result: <strong style="color:var(--text)">30–70% cheaper</strong>, task-shape dependent. The benchmark harness ships in the repo; run it yourself.</div>
       </div>
 
       <div class="slider-card reveal">
         <h3>The patience dial</h3>
         <p class="sub">lazycode's λ slider — every plan node can run realtime or batch</p>
-        <div class="lambda-row"><span style="color:var(--realtime)">λ=0 · all realtime</span><span style="color:var(--batch)">all batch · λ=1</span></div>
+        <div class="lambda-row"><span style="color:var(--amber)">λ=0 · all now</span><span style="color:var(--blue)">all overnight · λ=1</span></div>
         <input type="range" id="lambda" min="0" max="100" value="80" aria-label="Patience: mix of realtime versus batch execution">
         <div class="readout">
           <div class="cell"><div class="k">RELATIVE COST</div><div class="v" id="cost-v">44<small>%</small></div></div>
-          <div class="cell"><div class="k">DELIVERY</div><div class="v" id="time-v" style="font-size:22px;line-height:1.9">by morning</div></div>
+          <div class="cell"><div class="k">DELIVERY</div><div class="v" id="time-v">by morning</div></div>
         </div>
         <div class="costbar" aria-hidden="true"><i id="costbar-fill"></i></div>
         <p class="sub" style="margin:16px 0 0">Illustrative, using list prices and a generation-heavy task shape. Urgent nodes stay realtime; everything that can wait, waits — and gets cheaper.</p>
@@ -396,31 +518,31 @@ footer{padding:70px 0 50px;background:#160f1e;border-top:1px solid rgba(255,255,
 
 <section id="durability">
   <div class="wrap">
-    <p class="sec-eyebrow reveal">// durability</p>
-    <h2 class="reveal">Built to survive the night.</h2>
-    <p class="sec-sub reveal">An agent that runs while you sleep has one non-negotiable job: never lose work, never pay twice. Every guarantee below is enforced by the test suite, including a <code>kill&nbsp;-9</code> → resume end-to-end test.</p>
-    <div class="cards">
-      <div class="card reveal"><span class="glyph">events.sqlite ▸ append-only</span>
-        <h3>Event-sourced core</h3>
-        <p>Every state change is an event in SQLite; job state is a replayable projection. Crash at any instant — plan approved, wave in flight, results half-processed — and <code>lazycode resume</code> reconstructs exactly where it was.</p></div>
-      <div class="card reveal"><span class="glyph">sha256(items) ▸ idempotency</span>
-        <h3>Never pay for a batch twice</h3>
-        <p>Submissions carry content-derived idempotency keys, stamped into the provider's batch metadata. If the process dies between paying and recording, reconciliation finds the orphaned batch and adopts it instead of re-submitting.</p></div>
-      <div class="card reveal"><span class="glyph">lease ▸ single writer</span>
-        <h3>One writer, ever</h3>
-        <p>A daemon holds a heartbeated per-job lease as the sole database writer; CLI and UI are read-only clients over HTTP. No second process can double-submit your job — not even you, accidentally, from another terminal.</p></div>
-      <div class="card reveal"><span class="glyph">caffeinate -i ▸ with consent</span>
-        <h3>Stays awake, applies safely</h3>
-        <p>The daemon keeps your machine from sleeping (it asks first). Results land in git worktree sandboxes, diffs apply with three-way merge and an applied-diff ledger — your working tree is never touched.</p></div>
+    <p class="sec-eyebrow reveal">durability</p>
+    <h2 class="reveal">Built to sleep through anything.</h2>
+    <p class="sec-sub reveal">An agent that works while you sleep has one non-negotiable job: never lose work, never pay twice. Every guarantee below is enforced by the test suite — including a <code>kill&nbsp;-9</code> → resume end-to-end test.</p>
+    <div class="ledger">
+      <div class="ledger-item reveal"><div class="k">events.sqlite · append-only</div>
+        <div><h3>Event-sourced core</h3>
+        <p>Every state change is an event; job state is a replayable projection. Crash at any instant — plan approved, wave in flight, results half-processed — and <code>lazycode resume</code> reconstructs exactly where it was.</p></div></div>
+      <div class="ledger-item reveal"><div class="k">sha256(items) · idempotency</div>
+        <div><h3>Never pay for a batch twice</h3>
+        <p>Submissions carry content-derived idempotency keys, stamped into the provider's batch metadata. If the process dies between paying and recording, reconciliation finds the orphaned batch and adopts it instead of re-submitting.</p></div></div>
+      <div class="ledger-item reveal"><div class="k">lease · single writer</div>
+        <div><h3>One writer, ever</h3>
+        <p>A daemon holds a heartbeated per-job lease as the sole database writer; CLI and UI are read-only clients. No second process can double-submit your job — not even you, accidentally, from another terminal.</p></div></div>
+      <div class="ledger-item reveal"><div class="k">caffeinate -i · with consent</div>
+        <div><h3>Stays awake so you don't have to</h3>
+        <p>The daemon keeps your machine from sleeping (it asks first). Results land in git worktree sandboxes, diffs apply with three-way merge and an applied-diff ledger — your working tree is never touched.</p></div></div>
     </div>
   </div>
 </section>
 
 <section id="quickstart">
   <div class="wrap">
-    <p class="sec-eyebrow reveal">// quickstart</p>
-    <h2 class="reveal">Tonight's shift starts here.</h2>
-    <p class="sec-sub reveal" style="color:#f3e6da">Python 3.12+, a git repo with at least one commit, and an Anthropic API key. Or try the built-in mock provider first — zero network, zero spend.</p>
+    <p class="sec-eyebrow reveal">quickstart</p>
+    <h2 class="reveal">Start this evening.</h2>
+    <p class="sec-sub reveal" style="color:#f6e9dd">Python 3.12+, a git repo with at least one commit, and an Anthropic API key. Or try the built-in mock provider first — zero network, zero spend.</p>
 
     <div class="qs-block reveal">
       <div class="qs-head"><span>shell</span><button class="copy-btn" data-copy="qs-code">copy</button></div>
@@ -458,10 +580,11 @@ lazycode review jb_7f3a</pre>
   <div class="wrap foot">
     <div>
       <span class="wordmark"><span class="lazy">lazy</span>code</span>
-      <p>Plan realtime. Execute on batch. Review at dawn.<br>Apache-2.0 · pre-alpha · built in the open.</p>
+      <p>Plan in lamplight. Work by moonlight. Review at dawn.<br>Apache-2.0 · pre-alpha · built in the open, slowly.</p>
     </div>
     <div class="foot-links">
       <a href="https://github.com/rajagurunath/lazycode">GitHub</a>
+      <a href="https://pypi.org/project/lazycode-agent/">PyPI</a>
       <a href="https://github.com/rajagurunath/lazycode/blob/main/docs/DESIGN.md">Design doc</a>
       <a href="https://github.com/rajagurunath/lazycode/issues">Issues</a>
     </div>
@@ -474,23 +597,13 @@ lazycode review jb_7f3a</pre>
 (function(){
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ---- stars ---- */
-  var stars = document.getElementById('stars');
-  for (var i = 0; i < 40; i++) {
-    var s = document.createElement('span');
-    s.style.left = (Math.random()*100) + '%';
-    s.style.top = (Math.random()*90) + '%';
-    s.style.animationDelay = (Math.random()*4) + 's';
-    stars.appendChild(s);
-  }
-
-  /* ---- clock: 23:00 → 07:00 mapped onto scroll progress ---- */
+  /* clock: 23:00 → 07:00 mapped onto scroll progress */
   var timeEl = document.getElementById('clock-time');
   var glyphEl = document.getElementById('clock-glyph');
   function tick(){
     var max = document.documentElement.scrollHeight - window.innerHeight;
     var p = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
-    var mins = 23*60 + Math.round(p * 8*60);           // 23:00 + up to 8h
+    var mins = 23*60 + Math.round(p * 8*60);
     var h = Math.floor(mins/60) % 24, m = mins % 60;
     timeEl.textContent = (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
     glyphEl.textContent = p < 0.8 ? '🌙' : '🌅';
@@ -498,7 +611,7 @@ lazycode review jb_7f3a</pre>
   window.addEventListener('scroll', tick, {passive:true});
   tick();
 
-  /* ---- terminal replay ---- */
+  /* terminal replay — deliberately unhurried */
   var lines = [
     ['cmd','$ lazycode run "add type hints to services/" --verify "pytest -q"'],
     ['rt','◆ planning (realtime · claude) …'],
@@ -508,18 +621,21 @@ lazycode review jb_7f3a</pre>
     ['tree','  ├── Generate  services/quota.py     │'],
     ['tree','  └── Generate  services/events.py    ┘'],
     ['tree','        └── Verify (mypy + pytest) ── Reduce → branch + report'],
-    ['dim','  4 nodes batched · est. output at 50% of list · approve? [y/N] y'],
+    ['dim','  4 nodes batched · output at 50% of list · approve? [y/N] y'],
     ['bt','◇ 23:12  wave 1 submitted   msgbatch_01Kj… (4 items)'],
-    ['dim','  daemon holding the lease · caffeinate on · you can close the laptop'],
+    ['dim','  daemon holding the lease · caffeinate on · goodnight'],
     ['bt','◇ 04:51  wave 1 complete    4/4 ok'],
     ['bt','◇ 04:53  wave 2 submitted   verify groups A,B'],
     ['ok','✓ 06:12  job complete      branch lazycode/jb_7f3a · pytest 214 passed'],
     ['cmd','$ lazycode review jb_7f3a   # ☕ good morning']
   ];
   var term = document.getElementById('term');
-  function esc(t){ return t.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
   function renderAll(){
-    term.innerHTML = lines.map(function(l){return '<span class="'+l[0]+'">'+esc(l[1])+'</span>';}).join('\n');
+    term.textContent = '';
+    lines.forEach(function(l){
+      var s = document.createElement('span'); s.className = l[0]; s.textContent = l[1];
+      term.appendChild(s); term.appendChild(document.createTextNode('\n'));
+    });
   }
   if (reduced) { renderAll(); }
   else {
@@ -534,36 +650,36 @@ lazycode review jb_7f3a</pre>
       term.appendChild(span);
       term.appendChild(document.createTextNode('\n'));
       var c = document.createElement('span'); c.className = 'cursor'; term.appendChild(c);
-      var delay = l[0]==='cmd' ? 900 : (l[0]==='tree' ? 260 : 700);
+      var delay = l[0]==='cmd' ? 1100 : (l[0]==='tree' ? 300 : 850);
       if (li < lines.length) setTimeout(next, delay);
     }
     var tObs = new IntersectionObserver(function(es){
-      es.forEach(function(e){ if (e.isIntersecting && !started){ started = true; setTimeout(next, 400); tObs.disconnect(); } });
+      es.forEach(function(e){ if (e.isIntersecting && !started){ started = true; setTimeout(next, 500); tObs.disconnect(); } });
     }, {threshold: 0.25});
     tObs.observe(term);
   }
 
-  /* ---- DAG wave animation on scroll ---- */
+  /* DAG wave animation on scroll */
   var dag = document.getElementById('dag');
   var dObs = new IntersectionObserver(function(es){
     es.forEach(function(e){ if (e.isIntersecting){ dag.classList.add('play'); dObs.disconnect(); } });
   }, {threshold: 0.35});
   dObs.observe(dag);
 
-  /* ---- reveal on scroll ---- */
+  /* slow reveals */
   var rObs = new IntersectionObserver(function(es){
     es.forEach(function(e){ if (e.isIntersecting){ e.target.classList.add('in'); rObs.unobserve(e.target); } });
   }, {threshold: 0.12});
   document.querySelectorAll('.reveal').forEach(function(el){ rObs.observe(el); });
 
-  /* ---- patience dial ---- */
+  /* patience dial */
   var lam = document.getElementById('lambda');
   var costV = document.getElementById('cost-v');
   var timeV = document.getElementById('time-v');
   var fill = document.getElementById('costbar-fill');
   function dial(){
-    var t = lam.value / 100;                      // share of nodes batched
-    var cost = Math.round(100 - 70*t);            // illustrative: full batch ≈ 30%
+    var t = lam.value / 100;
+    var cost = Math.round(100 - 70*t);
     costV.innerHTML = cost + '<small>%</small>';
     fill.style.width = cost + '%';
     timeV.textContent = t < 0.15 ? 'in minutes' : t < 0.5 ? 'in hours' : t < 0.85 ? 'overnight' : 'by morning';
@@ -571,7 +687,7 @@ lazycode review jb_7f3a</pre>
   lam.addEventListener('input', dial);
   dial();
 
-  /* ---- copy buttons ---- */
+  /* copy buttons */
   document.querySelectorAll('.copy-btn').forEach(function(btn){
     btn.addEventListener('click', function(){
       var el = document.getElementById(btn.getAttribute('data-copy'));
