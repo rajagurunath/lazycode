@@ -102,3 +102,154 @@ def fake_batch_result(custom_id: str, result_type: str, **extra: Any) -> SimpleN
     else:  # pragma: no cover - test-construction error
         raise ValueError(result_type)
     return SimpleNamespace(custom_id=custom_id, result=result)
+
+
+# --- fake openai SDK client + response objects --------------------------------
+
+
+def fake_openai_batch(
+    *,
+    batch_id: str = "batch_1",
+    status: str = "in_progress",
+    total: int = 0,
+    completed: int = 0,
+    failed: int = 0,
+    output_file_id: str | None = None,
+    error_file_id: str | None = None,
+    metadata: dict[str, str] | None = None,
+) -> SimpleNamespace:
+    """Stand-in for ``openai.types.Batch``.
+
+    Note the counts: the real object's ``request_counts`` is only
+    ``{total, completed, failed}`` — there is no ``expired`` counter.
+    """
+    return SimpleNamespace(
+        id=batch_id,
+        status=status,
+        output_file_id=output_file_id,
+        error_file_id=error_file_id,
+        metadata=metadata,
+        request_counts=SimpleNamespace(total=total, completed=completed, failed=failed),
+    )
+
+
+class _FakeFiles:
+    """``client.files`` — records uploads, serves canned file bodies."""
+
+    def __init__(
+        self,
+        *,
+        file_id: str,
+        contents: dict[str, Any],
+        create_error: Exception | None,
+        content_error: Exception | None,
+    ) -> None:
+        self._file_id = file_id
+        self._contents = contents
+        self._create_error = create_error
+        self._content_error = content_error
+        self.created: list[dict[str, Any]] = []
+        self.content_calls: list[str] = []
+
+    def create(self, **kwargs: Any) -> SimpleNamespace:
+        if self._create_error is not None:
+            raise self._create_error
+        self.created.append(kwargs)
+        return SimpleNamespace(id=self._file_id)
+
+    def content(self, file_id: str) -> Any:
+        if self._content_error is not None:
+            raise self._content_error
+        self.content_calls.append(file_id)
+        return self._contents[file_id]
+
+
+class _FakeBatches:
+    """``client.batches`` — records create/list/cancel, serves a canned batch."""
+
+    def __init__(
+        self,
+        *,
+        batch: SimpleNamespace,
+        batch_id: str,
+        listed: list[Any],
+        create_error: Exception | None,
+        retrieve_error: Exception | None,
+        list_error: Exception | None,
+        cancel_error: Exception | None,
+    ) -> None:
+        self._batch = batch
+        self._batch_id = batch_id
+        self._listed = listed
+        self._create_error = create_error
+        self._retrieve_error = retrieve_error
+        self._list_error = list_error
+        self._cancel_error = cancel_error
+        self.created: list[dict[str, Any]] = []
+        self.list_calls: list[dict[str, Any]] = []
+        self.retrieved: list[str] = []
+        self.cancelled: list[str] = []
+
+    def create(self, **kwargs: Any) -> SimpleNamespace:
+        if self._create_error is not None:
+            raise self._create_error
+        self.created.append(kwargs)
+        return SimpleNamespace(id=self._batch_id)
+
+    def retrieve(self, batch_id: str) -> SimpleNamespace:
+        if self._retrieve_error is not None:
+            raise self._retrieve_error
+        self.retrieved.append(batch_id)
+        return self._batch
+
+    def list(self, **kwargs: Any) -> list[Any]:
+        if self._list_error is not None:
+            raise self._list_error
+        self.list_calls.append(kwargs)
+        return self._listed
+
+    def cancel(self, batch_id: str) -> None:
+        if self._cancel_error is not None:
+            raise self._cancel_error
+        self.cancelled.append(batch_id)
+
+
+class FakeOpenAIClient:
+    """Hand-built stand-in for ``openai.OpenAI``.
+
+    Exposes only the surface ``OpenAIBatchAdapter`` touches — ``files.create``,
+    ``files.content``, ``batches.create/retrieve/list/cancel`` — and records
+    every call so tests can assert on the exact wire arguments. Any of the
+    ``*_error`` kwargs makes that method raise instead, for error-mapping tests.
+    """
+
+    def __init__(
+        self,
+        *,
+        file_id: str = "file_1",
+        batch_id: str = "batch_1",
+        batch: SimpleNamespace | None = None,
+        listed: list[Any] | None = None,
+        files_content: dict[str, Any] | None = None,
+        files_create_error: Exception | None = None,
+        files_content_error: Exception | None = None,
+        batches_create_error: Exception | None = None,
+        retrieve_error: Exception | None = None,
+        list_error: Exception | None = None,
+        cancel_error: Exception | None = None,
+    ) -> None:
+        self.files = _FakeFiles(
+            file_id=file_id,
+            contents=files_content or {},
+            create_error=files_create_error,
+            content_error=files_content_error,
+        )
+        self.batches = _FakeBatches(
+            batch=batch if batch is not None else fake_openai_batch(batch_id=batch_id),
+            batch_id=batch_id,
+            listed=listed or [],
+            create_error=batches_create_error,
+            retrieve_error=retrieve_error,
+            list_error=list_error,
+            cancel_error=cancel_error,
+        )
