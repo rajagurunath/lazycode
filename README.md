@@ -47,6 +47,6 @@ What doesn't work yet (by design — later milestones, Appendix B11):
 - No cost estimate in the pre-flight prompt (plan tree + y/N only), no `explain analyze`, no cost/slider-driven optimizer beyond R1/R2 (M2).
 - No hedging or deadline-aware fallback to realtime (M2), no speculation/vectorization (M4).
 - No web UI, no desktop/Slack notifications (log line only), no `watch` TUI (M3).
-- Single provider (Anthropic) + realtime planner only — no OpenAI/Gemini/pseudo-batch adapters yet (M4).
+- Two batch providers (Anthropic, plus the OpenAI-compatible `openai-batch`/`selfhost` adapter for api.openai.com or a self-hosted vLLM/Tidal gateway) + realtime planner. Still missing: Gemini, webhook-first delivery, and provider failover with Caps re-validation (M4).
 - `--background` daemon mode, `merge`/`cancel` commands, and GitHub Actions best-effort runner are all unimplemented (M1/M2).
 - Memo-key sharing across duplicate nodes (by design): two distinct nodes that render *byte-identical* prompts share one R10 memo entry — the second is served from cache and, its identical diff being already in the applied-diff ledger, is marked DONE without a second apply. Since the rendered prompt embeds the node's spec, harvested files, and contract globs, identical prompts always mean identical requested work at M0's `temperature=0.0`/`sample_idx=0`; deliberate N-best sampling of one prompt gets distinct `sample_idx` values in M4 (DESIGN.md §5.2 R7/R10).

@@ -25,13 +25,14 @@ from lazycode.ir import Plan
 from lazycode.planner import PlanningError, propose_plan
 from lazycode.providers.anthropic_batch import AnthropicBatchAdapter
 from lazycode.providers.base import BatchAdapter, RealtimeAdapter
+from lazycode.providers.openai_batch import OpenAIBatchAdapter
 from lazycode.providers.realtime import AnthropicRealtimeAdapter
 from lazycode.scheduler import LeaseAcquisitionError, LeaseLostError, Orchestrator
 from lazycode.store import Store, projections
 
 from . import mock_provider
 from .client import get_client
-from .config import ConfigError, LazycodeConfig, load_config
+from .config import OPENAI_BATCH_PROVIDERS, ConfigError, LazycodeConfig, load_config
 from .daemon import DaemonAlreadyRunningError, Inhibitor, run_daemon
 from .render_plan import (
     NodeSummary,
@@ -120,6 +121,16 @@ def _build_batch_adapter(config: LazycodeConfig, repo_root: Path) -> BatchAdapte
         fixture = mock_provider.load_fixture(fixture_path)
         log_path = repo_root / ".lazycode" / "mock_submissions.jsonl"
         return mock_provider.FixtureBatchAdapter(fixture, submissions_log_path=log_path)
+    provider = config.default_provider
+    if provider in OPENAI_BATCH_PROVIDERS:
+        # OpenAI-compatible Batch wire, incl. a self-hosted gateway (§10
+        # pseudo-batch). No require_api_key(): a self-hosted endpoint usually
+        # ignores the header, so OpenAIBatchAdapter falls back to a placeholder.
+        return OpenAIBatchAdapter.from_env(
+            api_key_env=config.api_key_env_name(provider),
+            base_url=config.provider_config(provider).base_url,
+            provider_name=provider,
+        )
     return AnthropicBatchAdapter.from_env(api_key_env=config.api_key_env_name())
 
 

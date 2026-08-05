@@ -36,6 +36,19 @@ _DEFAULT_PROVIDER = "anthropic"
 _DEFAULT_MODEL = "claude-haiku-4-5"
 _DEFAULT_API_KEY_ENV = "ANTHROPIC_API_KEY"
 
+#: Provider names served by ``providers/openai_batch.py`` (the OpenAI-compatible
+#: Batch wire). ``selfhost`` is the alias for pointing the same adapter at a
+#: self-hosted gateway (vLLM/Tidal/io.net) via ``[providers.selfhost].base_url``.
+OPENAI_BATCH_PROVIDERS = frozenset({"openai-batch", "selfhost"})
+_OPENAI_BATCH_API_KEY_ENV = "OPENAI_BATCH_API_KEY"
+
+
+def default_api_key_env(provider: str) -> str:
+    """The ``api_key_env`` a provider gets when config doesn't name one."""
+    if provider in OPENAI_BATCH_PROVIDERS:
+        return _OPENAI_BATCH_API_KEY_ENV
+    return _DEFAULT_API_KEY_ENV
+
 
 class ConfigError(Exception):
     """A config value is missing/invalid in a way the user must fix.
@@ -53,11 +66,17 @@ class ProviderConfig:
     ``cli/mock_provider.py``): the path (repo-relative unless absolute) to a
     JSON fixture driving a config-constructible mock provider, so the real
     CLI can run end-to-end in a subprocess with zero network I/O.
+
+    ``base_url`` is only meaningful for the OpenAI-compatible batch providers
+    (:data:`OPENAI_BATCH_PROVIDERS`): the endpoint of a self-hosted gateway
+    (vLLM/Tidal/io.net) speaking the OpenAI Batch wire. Unset means the SDK's
+    own default (api.openai.com), or ``$OPENAI_BATCH_BASE_URL`` if exported.
     """
 
     model_default: str | None = None
     api_key_env: str = _DEFAULT_API_KEY_ENV
     fixture: str | None = None
+    base_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -94,7 +113,7 @@ class LazycodeConfig:
 
     def provider_config(self, provider: str | None = None) -> ProviderConfig:
         name = provider or self.default_provider
-        return self.providers.get(name, ProviderConfig())
+        return self.providers.get(name) or ProviderConfig(api_key_env=default_api_key_env(name))
 
     def resolve_model(self, cli_model: str | None = None, provider: str | None = None) -> str:
         """CLI flag > provider's ``model_default`` > hardcoded fallback."""
@@ -185,8 +204,9 @@ def _providers_from_raw(*raws: dict[str, Any]) -> dict[str, ProviderConfig]:
     for name, block in merged.items():
         out[name] = ProviderConfig(
             model_default=block.get("model_default"),
-            api_key_env=block.get("api_key_env", _DEFAULT_API_KEY_ENV),
+            api_key_env=block.get("api_key_env", default_api_key_env(name)),
             fixture=block.get("fixture"),
+            base_url=block.get("base_url"),
         )
     return out
 

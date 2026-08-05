@@ -61,7 +61,7 @@ from lazycode.providers.base import BatchAdapter
 from lazycode.scheduler import Orchestrator, SchedulerConfig
 from lazycode.store import Store
 
-from .config import LazycodeConfig
+from .config import OPENAI_BATCH_PROVIDERS, LazycodeConfig
 
 log = logging.getLogger("lazycode.cli.daemon")
 
@@ -648,6 +648,19 @@ def run_daemon(
             fixture = mock_provider.load_fixture(fixture_path)
             log_path = Path(repo_root) / ".lazycode" / "mock_submissions.jsonl"
             adapters = {provider: mock_provider.FixtureBatchAdapter(fixture, submissions_log_path=log_path)}
+        elif provider in OPENAI_BATCH_PROVIDERS:
+            # OpenAI-compatible Batch wire (§10) -- see app.py's
+            # ``_build_batch_adapter``. No require_api_key(): a self-hosted
+            # gateway usually ignores the header.
+            from lazycode.providers.openai_batch import OpenAIBatchAdapter
+
+            adapters = {
+                provider: OpenAIBatchAdapter.from_env(
+                    api_key_env=config.api_key_env_name(provider),
+                    base_url=config.provider_config(provider).base_url,
+                    provider_name=provider,
+                )
+            }
         else:
             config.require_api_key(provider)
             from lazycode.providers.anthropic_batch import AnthropicBatchAdapter

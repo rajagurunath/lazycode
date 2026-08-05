@@ -99,6 +99,31 @@ def test_require_api_key_names_custom_env_var(tmp_path: Path, monkeypatch: pytes
     assert "CUSTOM_ANTHROPIC_KEY" in str(excinfo.value)
 
 
+def test_selfhost_provider_carries_base_url_and_its_own_key_env(tmp_path: Path):
+    """The OpenAI-compatible batch providers point at a self-hosted gateway
+    (DESIGN.md §10 pseudo-batch) via [providers.<name>].base_url, and default
+    to OPENAI_BATCH_API_KEY rather than the Anthropic key env."""
+    (tmp_path / "lazycode.toml").write_text(
+        "[defaults]\nprovider = \"selfhost\"\n\n"
+        '[providers.selfhost]\nbase_url = "http://tidal.local:8000/v1"\n'
+        'model_default = "Qwen/Qwen3-Coder-30B"\n',
+        encoding="utf-8",
+    )
+    config = load_config(tmp_path, global_config_path_override=tmp_path / "no-such-global.toml")
+
+    assert config.default_provider == "selfhost"
+    assert config.provider_config().base_url == "http://tidal.local:8000/v1"
+    assert config.api_key_env_name() == "OPENAI_BATCH_API_KEY"
+    assert config.resolve_model() == "Qwen/Qwen3-Coder-30B"
+
+
+def test_unconfigured_openai_batch_provider_still_defaults_to_its_key_env(tmp_path: Path):
+    config = load_config(tmp_path, global_config_path_override=tmp_path / "no-such-global.toml")
+    assert config.api_key_env_name("openai-batch") == "OPENAI_BATCH_API_KEY"
+    assert config.api_key_env_name("anthropic") == "ANTHROPIC_API_KEY"
+    assert config.provider_config("openai-batch").base_url is None
+
+
 def test_to_scheduler_config_applies_overrides(tmp_path: Path):
     config = load_config(tmp_path, global_config_path_override=tmp_path / "no-such-global.toml")
     sched = config.to_scheduler_config(model="claude-opus-4", max_waves=3)
