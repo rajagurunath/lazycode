@@ -1,0 +1,139 @@
+% Figure 5 -- anatomy of one rendered, self-sufficient batch call.
+% Prompt strings quoted verbatim from lazycode/scheduler/render.py;
+% byte budgets from lazycode/harvest/harvester.py.
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+
+\tikzset{
+  blk/.style={box, text width=8.2cm, align=left, font=\sffamily\scriptsize,
+              inner xsep=5pt, inner ysep=4.5pt},
+  sysblk/.style={blk, fill=accent!11},
+  usrblk/.style={blk, fill=accent!4},
+  rblk/.style={boxs, text width=3.9cm, align=left, minimum height=6mm,
+               inner xsep=4pt, inner ysep=4pt,
+               font=\sffamily\fontsize{6.8}{8.2}\selectfont},
+}
+
+\newcommand{\hdr}[1]{\textbf{#1}\\[1.5pt]}
+\newcommand{\qtext}[1]{{\sffamily\fontsize{6.6}{8}\selectfont\itshape #1}}
+\newcommand{\budget}[1]{{\sffamily\fontsize{6.2}{7.4}\selectfont\color{danger}#1}}
+
+% ======================= LEFT COLUMN: the rendered call ====================
+\node[banner, anchor=south west] at (0,4.6)
+  {ONE BATCH ITEM \; \normalfont\sffamily\scriptsize every byte decided up front};
+
+\node[sysblk, anchor=north west] (sys) at (0,4.45)
+  {\hdr{\texttt{system} $\cdot$ PrefixBlock[0] \textemdash{} execution role}
+   \qtext{``You are a lazycode batch executor. You are given a fully harvested,
+   self-sufficient task: everything you need is in this prompt. Produce the
+   requested artifact directly. \textbf{You cannot ask questions} \textemdash{} when you
+   must make a judgment call, make the most reasonable choice and record it
+   under an `Assumptions:' heading at the end of your response.''}};
+
+\node[sysblk, below=1.2mm of sys.south west, anchor=north west] (rmap)
+  {\hdr{\texttt{system} $\cdot$ PrefixBlock[1] \textemdash{} repo map, \texttt{cache\_hint = True}}
+   AST-derived repository outline; demote-largest-then-drop under budget, so breadth
+   survives and detail degrades.\\[2pt]
+   \budget{R4 prefix hoist $\cdot$ \texttt{repo\_map\_budget} $=$ 8\,000 B $\cdot$
+   the only cache-hinted block}};
+
+\node[sysblk, below=1.2mm of rmap.south west, anchor=north west] (rules)
+  {\hdr{\texttt{system} $\cdot$ PrefixBlock[2] \textemdash{} house rules}
+   Resolved from a fixed priority list of convention files (\texttt{CLAUDE.md},
+   \texttt{AGENTS.md}, \texttt{CONTRIBUTING.md}, \texttt{pyproject.toml}, lint configs).\\[2pt]
+   \budget{16 candidate files $\cdot$ \texttt{house\_rules\_budget} $=$ 20\,000 B
+   $\cdot$ no cache hint}};
+
+\node[usrblk, below=1.2mm of rules.south west, anchor=north west] (instr)
+  {\hdr{\texttt{user} \textemdash{} (1) operator instruction}
+   \textsc{Generate}: the spec. \textsc{Edit}: the instruction plus ``Files to edit:
+   \dots''. \textsc{Reduce} / \textsc{Judge}: the instruction or rubric.};
+
+\node[usrblk, below=1.2mm of instr.south west, anchor=north west] (files)
+  {\hdr{\texttt{user} \textemdash{} (2) harvested file blocks}
+   \texttt{\#\#\# File: <relpath>} followed by the file contents, one block per file.\\[2pt]
+   \budget{\texttt{per\_file\_budget} $=$ 60\,000 B $\cdot$ \texttt{total\_file\_budget}
+   $=$ 400\,000 B $\cdot$ overflow is listed explicitly under \texttt{\_\_omitted\_\_},
+   never silently dropped}};
+
+\node[usrblk, below=1.2mm of files.south west, anchor=north west] (contract)
+  {\hdr{\texttt{user} \textemdash{} (3) output contract directive}
+   \qtext{``Respond with a SINGLE unified diff in git format
+   (-{}-- a/\dots\ / +++ b/\dots\ / @@ hunks), and nothing else before it.
+   \textbf{Only touch files matching: <globs>}. Do not include prose before the diff;
+   put any `Assumptions:' notes AFTER the diff.''}};
+
+\node[usrblk, below=1.2mm of contract.south west, anchor=north west] (assume)
+  {\hdr{\texttt{user} \textemdash{} (4) assumption-ledger directive}
+   \qtext{``If you made any judgment calls, list them under a final
+   `Assumptions:' heading.''}};
+
+\begin{scope}[on background layer]
+  \node[group, fit=(sys)(assume), inner xsep=4pt, inner ysep=4pt] (call) {};
+\end{scope}
+
+% ---- memo key -------------------------------------------------------------
+\node[boxf, text width=8.2cm, below=7mm of call.south west, anchor=north west, align=left,
+      font=\sffamily\fontsize{6.8}{8.2}\selectfont] (memo)
+  {\textbf{\texttt{memo\_key} $=$ sha256(model, prompt, mode, sample\_idx)} \quad (R10)\\[2pt]
+   The hashed prompt excludes \texttt{custom\_id} and \texttt{node\_ids}, so two nodes that
+   render byte-identically collide on purpose. Deterministic harvest plus temperature 0 is
+   what makes this an \emph{exact-reuse} cache: a memo hit is filtered out before
+   \texttt{WAVE\_FORMED} and is never billed twice.};
+\draw[ar] (call.south -| memo.north) -- (memo.north);
+
+% ======================= RIGHT COLUMN: the return path =====================
+\def\rx{9.3}
+\node[banner, anchor=south west] at (\rx,4.6)
+  {THE RETURN PATH \; \normalfont\sffamily\scriptsize defense-in-depth, ordered};
+
+\node[rblk, anchor=north west, fill=inkgray!6, draw=inkgray] (resp) at (\rx,4.45)
+  {\textbf{model response}, up to 24 h later};
+\node[rblk, below=4.2mm of resp.south west, anchor=north west] (ext)
+  {\textbf{\texttt{extract\_diff}}: pull the diff out of the response};
+\node[rblk, below=4.2mm of ext.south west, anchor=north west] (val)
+  {\textbf{\texttt{validate\_diff\_paths}}\\
+   normalise $\to$ reject absolute paths and \texttt{..} segments $\to$
+   \emph{then} \texttt{fnmatch} against the allow-list\\[1.5pt]
+   \budget{the order matters: \texttt{fnmatch}'s \texttt{*} happily matches
+   \texttt{/} and \texttt{..}}};
+\node[rblk, below=4.2mm of val.south west, anchor=north west] (hash)
+  {\textbf{\texttt{compute\_diff\_hash}} $\to$ \texttt{applied\_diffs} lookup\\
+   already applied $\Rightarrow$ skip (idempotent replay)};
+\node[rblk, below=4.2mm of hash.south west, anchor=north west] (apply)
+  {\textbf{\texttt{git apply -{}-3way}} into the pinned-base worktree\\
+   \texttt{-{}-check} pre-flight, rollback on failure};
+\node[rblk, below=4.2mm of apply.south west, anchor=north west] (ledger)
+  {\textbf{ledger record}: \texttt{ARTIFACT\_APPLY\_INTENT} before,
+   \texttt{ARTIFACT\_APPLIED} after, \texttt{UNIQUE(worktree, diff\_hash)}};
+
+\node[term, below=4.2mm of ledger.south west, anchor=north west, text width=1.5cm,
+      font=\sffamily\scriptsize] (done) {DONE};
+\node[term, right=6mm of done, text width=2.4cm, font=\sffamily\scriptsize] (nh)
+  {NEEDS\_HUMAN};
+
+\draw[ar] (resp) -- (ext);
+\draw[ar] (ext) -- (val);
+\draw[ar] (val) -- (hash);
+\draw[ar] (hash) -- (apply);
+\draw[ar] (apply) -- (ledger);
+\draw[ar] (ledger.south -| done.north) -- (done.north);
+
+\coordinate (fx) at (14.05,0);
+\draw[ar] (val.east) -- (val.east -| fx) -- (fx |- nh.north) -- (nh.north);
+\node[lbls, anchor=south, text=danger] at ($(val.east)+(0.72,0.04)$) {\texttt{DiffPathViolation}};
+\draw[ar] (apply.east) -- (apply.east -| fx);
+\node[lbls, anchor=south, text=danger] at ($(apply.east)+(0.6,0.04)$) {\texttt{DiffConflict}};
+
+\node[rblk, below=5mm of done.south west, anchor=north west, fill=accent!12,
+      text width=5.2cm] (asm)
+  {\textbf{the `Assumptions:' section} is parsed off the artifact and carried into the
+   \textbf{morning report}: a judgment call becomes a reviewable data artifact instead of
+   a blocking question};
+\draw[ar] (resp.north west) -- ++(-0.35,0) |- (asm.west);
+\node[lbls, anchor=north west, align=left, text width=5.2cm]
+  at ($(asm.south west)+(0,-0.18)$)
+  {Contract failure and merge conflict are \emph{data}, not exceptions: both route to
+   \textsc{needs\_human}, and the rest of the wave keeps going.};
+
+\end{tikzpicture}}

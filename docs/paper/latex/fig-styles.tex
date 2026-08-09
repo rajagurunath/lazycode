@@ -1,0 +1,53 @@
+% Shared TikZ styles for the LazyCode paper figures.
+% Convention (load-bearing, see sec:implementation):
+%   accent  = SHIPPED, load-bearing code today
+%   dimmed  = DESIGNED / plumbed only, not reachable at runtime
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,fit,backgrounds,
+                decorations.pathreplacing,decorations.pathmorphing,patterns}
+
+\definecolor{danger}{RGB}{160,60,45}
+\definecolor{inkgray}{RGB}{70,70,70}
+
+\tikzset{
+  % ---- shipped ----------------------------------------------------------
+  box/.style={
+    rounded corners=2pt, draw=accent, line width=0.6pt,
+    fill=accent!6, text=black,
+    font=\sffamily\footnotesize, align=center,
+    inner xsep=4pt, inner ysep=3.5pt, minimum height=8mm},
+  boxs/.style={box, font=\sffamily\scriptsize},
+  % emphatic (event log, contracts)
+  boxf/.style={box, fill=accent!14, line width=0.8pt},
+  % neutral / input-output terminals
+  term/.style={
+    rounded corners=5pt, draw=inkgray, line width=0.6pt, fill=white,
+    font=\sffamily\footnotesize, align=center,
+    inner xsep=4pt, inner ysep=3.5pt, minimum height=7mm},
+  % ---- designed only ----------------------------------------------------
+  dbox/.style={
+    rounded corners=2pt, draw=dimmed, line width=0.5pt, dash pattern=on 2pt off 1.6pt,
+    fill=dimmed!7, text=dimmed,
+    font=\sffamily\footnotesize, align=center,
+    inner xsep=4pt, inner ysep=3.5pt, minimum height=8mm},
+  dboxs/.style={dbox, font=\sffamily\scriptsize},
+  % ---- containers -------------------------------------------------------
+  group/.style={
+    rounded corners=3pt, draw=inkgray!45, line width=0.5pt,
+    dash pattern=on 3pt off 2pt, inner sep=5pt},
+  % ---- arrows -----------------------------------------------------------
+  ar/.style={-{Stealth[length=1.9mm,width=1.5mm]}, draw=accent, line width=0.6pt},
+  arg/.style={-{Stealth[length=1.9mm,width=1.5mm]}, draw=inkgray, line width=0.6pt},
+  dar/.style={-{Stealth[length=1.9mm,width=1.5mm]}, draw=dimmed, line width=0.5pt,
+              dash pattern=on 2pt off 1.6pt},
+  % ---- labels -----------------------------------------------------------
+  lbl/.style={font=\sffamily\scriptsize, text=inkgray, align=center, inner sep=1.5pt},
+  lbls/.style={font=\sffamily\fontsize{6}{7}\selectfont, text=inkgray,
+               align=center, inner sep=1.2pt},
+  dlbl/.style={font=\sffamily\scriptsize, text=dimmed, align=center, inner sep=1.5pt},
+  wtag/.style={font=\sffamily\bfseries\scriptsize, text=danger, inner sep=1.2pt},
+  banner/.style={font=\sffamily\bfseries\scriptsize, text=accent, align=left},
+}
+
+% small gray annotation text inside a node
+\newcommand{\lbltext}[1]{{\sffamily\scriptsize\color{inkgray}#1}}
+\newcommand{\lbltiny}[1]{{\sffamily\fontsize{6}{7}\selectfont\color{inkgray}#1}}

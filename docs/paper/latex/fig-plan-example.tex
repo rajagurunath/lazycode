@@ -1,0 +1,85 @@
+% Figure 3 -- a plan, compiled: logical DAG (left) vs. rewritten + lowered (right).
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+
+\tikzset{
+  opn/.style={box, text width=2.4cm, minimum height=9mm, font=\sffamily\scriptsize},
+  opl/.style={opn, draw=inkgray, fill=inkgray!5},
+  note/.style={lbls, anchor=north, text width=2.5cm},
+}
+
+% ============================ LEFT: as planned =============================
+\node[banner, anchor=south west, text=inkgray] at (-0.1,1.3)
+  {LOGICAL PLAN \; \normalfont\sffamily\scriptsize as emitted by the planner};
+
+\node[opl] (lex)  at (2.6,0.55)  {\textsc{Explore}\\ find test-less modules};
+\node[opl] (ldec) at (2.6,-1.05) {\textsc{Decompose}\\ one node per module};
+\node[opl] (lg1)  at (0.0,-3.0)
+  {\textsc{Generate} m1\\ \lbltiny{\textcolor{danger}{\texttt{repo\_map} = true}}};
+\node[opl] (lg2)  at (2.6,-3.0)
+  {\textsc{Generate} m2\\ \lbltiny{\textcolor{danger}{\texttt{repo\_map} = true}}};
+\node[opl] (lg3)  at (5.2,-3.0)
+  {\textsc{Generate} m3\\ \lbltiny{\textcolor{danger}{\texttt{repo\_map} = true}}};
+\node[opl] (lver) at (2.6,-4.9) {\textsc{Verify}\\ \texttt{pytest -q}};
+\node[opl] (lred) at (2.6,-6.5) {\textsc{Reduce}\\ summarise for review};
+
+\draw[arg] (lex) -- (ldec);
+\foreach \n in {lg1,lg2,lg3} { \draw[arg] (ldec.south) -- (\n.north); }
+\foreach \n in {lg1,lg2,lg3} { \draw[arg] (\n.south) -- (lver.north); }
+\draw[arg] (lver) -- (lred);
+
+\node[lbls, anchor=north, text width=6.4cm] at (2.6,-7.35)
+  {5 dependency layers. Lowered literally, that is \textbf{5 batch rounds}
+   ($R = 5$), and every \textsc{Generate} re-ships the full repo map.};
+
+% separator
+\draw[dimmed, dash pattern=on 2pt off 2pt] (7.1,1.45) -- (7.1,-8.3);
+\node[lbl, text=accent, fill=white, inner sep=3pt] at (7.1,-3.3)
+  {\rotatebox{90}{\textbf{rewrite $+$ lower}}};
+
+% ====================== RIGHT: rewritten and lowered =======================
+\def\bandL{8.3}\def\bandR{17.6}
+\newcommand{\band}[4]{%
+  \fill[#4] (\bandL,#1) rectangle (\bandR,#2);
+  \draw[dimmed, dash pattern=on 2pt off 2pt] (\bandL,#1) -- (\bandR,#1);
+  \draw[dimmed, dash pattern=on 2pt off 2pt] (\bandL,#2) -- (\bandR,#2);
+  \node[lbls, anchor=north west, align=left] at (\bandL+0.08,#2-0.06) {#3};}
+
+\node[banner, anchor=south west] at (\bandL,1.3)
+  {PHYSICAL PLAN \; \normalfont\sffamily\scriptsize after R1, R2 and wave layering};
+
+\band{-1.85}{1.15}{\textbf{wave-0} \textemdash{} local, free}{inkgray!5}
+\band{-4.55}{-2.05}{\textbf{wave-1} \textemdash{} batch round 1 (one provider batch:
+  3 items, one hoisted prefix)}{accent!8}
+\band{-6.35}{-4.75}{\textbf{wave-2} \textemdash{} local, free}{inkgray!5}
+\band{-8.15}{-6.55}{\textbf{wave-3} \textemdash{} batch round 2}{accent!8}
+
+\node[opl] (rex)  at (12.95,0.4)  {\textsc{Explore} $\to$ LOCAL};
+\node[opl] (rdec) at (12.95,-1.15) {\textsc{Decompose} $\to$ LOCAL};
+\node[lbls, anchor=west, align=left, text width=3.3cm, text=accent] at (14.35,0.4)
+  {R1 LocalPushdown:\\ ripgrep $+$ AST outline,\\ \$0, zero rounds};
+
+\node[opn] (rg1) at (10.0,-3.10)
+  {\textsc{Generate} m1\\ \lbltiny{\textcolor{accent}{\texttt{repo\_map} dropped (R2)}}};
+\node[opn] (rg2) at (12.95,-3.10)
+  {\textsc{Generate} m2\\ \lbltiny{\textcolor{accent}{\texttt{repo\_map} dropped (R2)}}};
+\node[opn] (rg3) at (15.9,-3.10)
+  {\textsc{Generate} m3\\ \lbltiny{\textcolor{accent}{\texttt{repo\_map} dropped (R2)}}};
+\node[lbls, anchor=north west, align=left, text=accent, text width=4.4cm] at (8.45,-3.92)
+  {R2 fires on every node whose\\ scope is $\le$ 2 literal files};
+
+\node[opl] (rver) at (12.95,-5.55) {\textsc{Verify} $\to$ LOCAL\\ \texttt{pytest -q}};
+\node[opn] (rred) at (12.95,-7.35) {\textsc{Reduce} $\to$ batch};
+
+\draw[ar] (rex) -- (rdec);
+\foreach \n in {rg1,rg2,rg3} { \draw[ar] (rdec.south) -- (\n.north); }
+\foreach \n in {rg1,rg2,rg3} { \draw[ar] (\n.south) -- (rver.north); }
+\draw[ar] (rver) -- (rred);
+
+\node[lbls, anchor=north, text width=8.8cm, align=center] at (12.95,-8.45)
+  {\textbf{remote depth 2} (waves 1 and 3) $\;\cdot\;$ \textbf{width 3}.
+   Adding modules 4 through 40 widens wave-1 and leaves $R$ at 2: the shallow-wide
+   shape the planner prompt asks for, and the reason wall-clock tracks depth rather
+   than total work.};
+
+\end{tikzpicture}}

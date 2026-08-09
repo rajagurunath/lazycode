@@ -1,0 +1,143 @@
+% Figure 2 -- the LazyCode pipeline.
+% accent = shipped code; dimmed/dashed = designed with plumbing, not reachable.
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+
+\tikzset{
+  wtag/.append style={fill=danger!10, rounded corners=1pt, draw=danger, line width=0.35pt,
+                      font=\sffamily\bfseries\fontsize{6}{7}\selectfont},
+}
+
+% =============== ROW A: plan time, priced online ===========================
+\node[term, text width=1.35cm] (goal) at (0.9,0) {User\\goal};
+\node[box, text width=2.6cm]  (plan) at (4.3,0)
+  {\textbf{PLANNER}\\[1pt]\lbltext{realtime LLM, forced-tool\\ \texttt{Plan} emission,\\
+   3-attempt schema retry}};
+\node[box, text width=2.6cm] (lp) at (7.7,0)
+  {\textbf{LOGICAL PLAN}\\[1pt]\lbltext{8-operator typed DAG:\\ unique ids, resolvable\\
+   deps, acyclic}};
+\node[box, text width=2.6cm] (opt) at (11.1,0)
+  {\textbf{OPTIMIZER}\\[1pt]\lbltext{rewrite pass over the IR}};
+\node[box, text width=2.6cm] (phys) at (14.7,0)
+  {\textbf{PHYSICAL PLANNER}\\[1pt]\lbltext{layering, \texttt{exec\_class},\\ (provider, model)}};
+
+\node[boxs, text width=2.6cm] (optS) at (11.1,-1.35)
+  {R1 LocalPushdown\\ R2 ContextPruning\\ R10 Memoize};
+\node[dboxs, text width=2.6cm] (optD) at (11.1,-2.58)
+  {R3--R9: no cost model,\\ no re-optimization};
+
+\draw[arg] (goal) -- (plan);
+\draw[ar]  (plan) -- (lp);
+\draw[ar]  (lp)   -- (opt);
+\draw[ar]  (opt)  -- (phys);
+\draw[ar]  (opt.south) -- (optS.north);
+\draw[dar] (optS.south) -- (optD.north);
+
+\node[lbls, anchor=south] at (4.3,1.22) {the only online-priced call};
+\node[lbls, anchor=south] at (14.7,1.22) {no LLM calls below this point};
+
+% =============== ROW B: the wave loop ======================================
+\def\wy{-4.95}
+\node[boxs, text width=2.4cm] (fr)   at (0.9,\wy)
+  {\textbf{ready frontier}\\ deps satisfied,\\ sorted by id};
+\node[boxs, text width=2.4cm] (grp)  at (3.85,\wy)
+  {\textbf{group by}\\ (provider, model)\\ $=$ one batch};
+\node[boxs, text width=2.4cm] (memo) at (6.8,\wy)
+  {\textbf{memo filter} R10\\ \texttt{sha256} hit\\ $\Rightarrow$ never submitted};
+\node[boxf, text width=2.4cm, font=\sffamily\scriptsize] (formed) at (9.75,\wy)
+  {\texttt{WAVE\_FORMED}\\ idempotency key\\ $+$ item ids};
+\node[boxf, text width=2.4cm, font=\sffamily\scriptsize] (subm) at (12.7,\wy)
+  {submit, then\\ \texttt{WAVE\_SUBMITTED}\\ key in metadata};
+\node[boxf, text width=2.4cm, font=\sffamily\scriptsize] (poll) at (15.65,\wy)
+  {poll, fetch,\\ process items, then\\ \texttt{WAVE\_COMPLETED}};
+
+\draw[ar] (fr) -- (grp);
+\draw[ar] (grp) -- (memo);
+\draw[ar] (memo) -- (formed);
+\draw[ar] (formed) -- (subm);
+\draw[ar] (subm) -- (poll);
+
+\node[wtag] at (11.225,\wy+0.45) {W1};
+\node[wtag] at (14.175,\wy+0.45) {W2};
+\node[wtag] at (15.65,\wy+0.76) {W3};
+
+\begin{scope}[on background layer]
+  \node[group, fill=accent!3, fit=(fr)(poll), inner xsep=6pt, inner ysep=24pt] (waveloop) {};
+\end{scope}
+\node[banner, anchor=north west] at ([xshift=3pt,yshift=-2pt]waveloop.north west)
+  {WAVE LOOP \; \normalfont\sffamily\scriptsize
+   barrier-synchronised, bounded by \texttt{max\_waves} $=$ 8};
+
+% barrier feedback edge, inside the container's bottom padding
+\draw[ar] (poll.south) -- ++(0,-0.55) -- (0.9,\wy-1.15) -- (fr.south);
+\node[lbls, anchor=north] at (8.3,\wy-1.19)
+  {barrier: the next frontier forms only after every item of this wave is terminal};
+
+\draw[ar] (phys.south) -- (14.7,-3.28) -- (-1.15,-3.28) -- (-1.15,\wy) -- (fr.west);
+
+% crash windows, explained below the loop
+\node[lbls, text=danger, anchor=north, align=left, text width=10.8cm] at (5.4,\wy-1.95)
+  {\textbf{W1} formed, not submitted: query the provider for a batch carrying the logged key
+   \textemdash{} adopt it if found, re-enqueue if absent \quad
+   \textbf{W2} submitted, not completed: re-poll, never resubmit \quad
+   \textbf{W3} completed, mid-processing: replay idempotently (memo cache $+$
+   \texttt{applied\_diffs} ledger)};
+
+% =============== ROW B2: providers =========================================
+\def\py{-9.05}
+\node[box, text width=4.2cm] (anth) at (6.3,\py)
+  {\textbf{Anthropic Message Batches}\\[1pt]\lbltext{one result set, four per-item statuses}};
+\node[box, text width=5.3cm] (oai) at (12.6,\py)
+  {\textbf{OpenAI-compatible Batches}\\[1pt]\lbltext{output $+$ error files unioned by
+   \texttt{custom\_id};\\ self-hosted target: \textbf{Tidal}}};
+\node[lbls, anchor=east, align=right, text width=2.6cm] at (3.7,\py)
+  {24-hour window\\ 0.5$\times$ price\\ no per-item cancel};
+\begin{scope}[on background layer]
+  \node[group, fit=(anth)(oai), inner sep=5pt] (provs) {};
+\end{scope}
+
+\draw[ar] (12.7,\wy-1.72) -- (12.7,\py+0.78);
+\node[lbls, anchor=west, align=left, text width=2.5cm] at (12.85,\py+1.35) {one wave $=$\\ one provider batch};
+\draw[ar] (15.9,\py+0.78) -- (15.9,\wy-1.72);
+\node[lbls, anchor=west, align=left] at (16.05,\py+1.35) {results};
+
+% =============== ROW C: apply / verify =====================================
+\def\cy{-11.35}
+\node[box, text width=4.4cm] (wt) at (3.3,\cy)
+  {\textbf{WORKTREE} (pinned base)\\[1pt]\lbltext{extract diff $\to$ path allow-list $\to$\\
+   \texttt{git apply -{}-3way} $\to$ \texttt{applied\_diffs} ledger}};
+\node[box, text width=2.9cm] (ver) at (8.4,\cy)
+  {\textbf{VERIFY}\\[1pt]\lbltext{user command, local,\\ a free deterministic oracle}};
+\node[term, text width=1.5cm] (done) at (11.8,\cy-0.55) {DONE};
+\node[term, text width=2.1cm] (nh)   at (11.8,\cy+0.6) {NEEDS\_HUMAN};
+\node[dboxs, text width=2.4cm] (rep) at (15.2,\cy+0.6)
+  {R9 RepairBudget:\\ bounded Verify $\to$ Repair};
+\node[dboxs, text width=2.4cm] (gate) at (15.2,\cy-0.55)
+  {\textsc{Gate}: an unreachable\\ node state};
+
+\draw[ar] (0.9,\wy-1.72) -- (0.9,\cy) -- (wt.west);
+\node[lbls, anchor=west, align=left, text width=2.2cm] at (1.05,\cy+1.35)
+  {each returned item};
+\draw[ar] (wt) -- (ver);
+\draw[ar] (ver.east) -- ++(0.35,0) |- (done.west);
+\draw[ar] (ver.east) -- ++(0.35,0) |- (nh.west);
+\draw[dar] (nh) -- (rep);
+\draw[dar] (done) -- (gate);
+\node[lbls, anchor=north, align=center, text width=6.5cm] at (5.9,\cy-1.0)
+  {contract failure and merge conflict are \emph{data}, not exceptions};
+
+% =============== BOTTOM RAIL: event log ====================================
+\def\ey{-13.95}
+\node[boxf, text width=15.8cm, minimum height=11mm] (log) at (8.4,\ey)
+  {\textbf{EVENT LOG} \textemdash{} SQLite WAL, append-only, 23 event types
+   \textemdash{} \emph{the source of truth}\\[2pt]
+   \lbltext{\texttt{JOB\_CREATED} $\cdot$ \texttt{PLAN\_PROPOSED} $\cdot$ \texttt{NODE\_READY}
+   $\cdot$ \texttt{NODE\_HARVESTED} $\cdot$ \texttt{WAVE\_FORMED} $\cdot$
+   \texttt{WAVE\_SUBMITTED} $\cdot$ \texttt{ITEM\_RETURNED} $\cdot$ \texttt{CONTRACT\_RESULT}
+   $\cdot$ \texttt{ARTIFACT\_APPLY\_INTENT} $\cdot$ \texttt{ARTIFACT\_APPLIED} $\cdot$
+   \texttt{VERIFY\_RESULT} $\cdot$ \texttt{WAVE\_COMPLETED} $\cdot$ \texttt{NODE\_DONE}
+   $\cdot$ \dots\\[2pt]
+   \textbf{projections} \texttt{jobs} / \texttt{nodes} / \texttt{waves} are derived and
+   replayable; every transition above is written \emph{before} its side effect}};
+
+\end{tikzpicture}}

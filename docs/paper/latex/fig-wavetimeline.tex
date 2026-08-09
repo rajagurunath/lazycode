@@ -1,0 +1,146 @@
+% Figure 4 -- wave execution over a night, with the three crash windows.
+% Time axis is broken: hours 0..6 at full scale, then a jump to the 24 h expiry
+% ceiling, then the post-barrier tail.
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+
+\tikzset{
+  lane/.style={lbls, anchor=east, align=right, text width=2.2cm},
+  itembar/.style={draw=accent, line width=1.7pt, line cap=round},
+  stallbar/.style={draw=accent, line width=1.7pt, line cap=round,
+                   dash pattern=on 1.4pt off 1.4pt},
+  hedgebar/.style={draw=dimmed, line width=1.7pt, line cap=round,
+                   dash pattern=on 2pt off 1.6pt},
+  tick/.style={draw=inkgray, line width=0.5pt},
+  guide/.style={draw=inkgray!35, line width=0.4pt, dash pattern=on 1.2pt off 1.6pt},
+  evt/.style={font=\sffamily\fontsize{6}{7}\selectfont, text=accent, inner sep=1pt},
+  endcap/.style={circle, fill=accent, inner sep=1.1pt},
+}
+
+% ---- geometry -------------------------------------------------------------
+% hours 0..6  -> x = 0 .. 9   (1.5 cm/h); break at 9.3..10.2; 24 h -> x = 10.6
+\def\XEXP{10.6}\def\XEND{15.4}\def\XBAR{11.95}
+\def\LEFT{-2.5}
+
+% ---- lane geometry --------------------------------------------------------
+\def\ywzero{0.55}
+\def\yiA{-0.6}\def\yiB{-1.05}\def\yiC{-1.5}\def\yiD{-2.08}
+\def\yhedge{-3.0}\def\ywtwo{-3.9}\def\yver{-4.7}\def\yrep{-5.6}
+\def\ay{-6.6}
+
+% ---- crash-window explanation (top) --------------------------------------
+\node[lbls, text=danger, anchor=north west, align=left, text width=17.2cm] at (\LEFT,4.75)
+  {\textbf{W1} formed, not submitted: query the provider for a batch carrying the logged key
+   \textemdash{} adopt it if found, re-enqueue if absent. \quad
+   \textbf{W2} submitted, not completed: re-poll, never resubmit. \quad
+   \textbf{W3} completed, mid-processing: replay idempotently
+   (memo cache $+$ \texttt{applied\_diffs} ledger).};
+
+% ---- crash windows --------------------------------------------------------
+\draw[decorate, decoration={brace, amplitude=3.5pt, raise=1pt}, draw=danger, line width=0.5pt]
+  (0.6,3.6) -- (0.0,3.6) node[wtag, midway, above=3.5pt] {W1};
+\draw[decorate, decoration={brace, amplitude=3.5pt, raise=1pt}, draw=danger, line width=0.5pt]
+  (9.25,3.6) -- (0.65,3.6) node[wtag, midway, above=3.5pt] {W2};
+\draw[decorate, decoration={brace, amplitude=3.5pt, raise=1pt}, draw=danger, line width=0.5pt]
+  (\XBAR,3.6) -- (10.3,3.6) node[wtag, midway, above=3.5pt] {W3};
+
+% ---- durable event markers ------------------------------------------------
+\draw[guide] (0.0,3.45) -- (0.0,\ay);
+\draw[guide] (0.6,3.45) -- (0.6,\ay);
+\draw[guide] (\XBAR,3.45) -- (\XBAR,\ay);
+\node[evt, rotate=90, anchor=west] at (-0.06,1.20) {\texttt{WAVE\_FORMED}};
+\node[evt, rotate=90, anchor=west] at (0.54,1.20) {\texttt{WAVE\_SUBMITTED}};
+\node[evt, rotate=90, anchor=west, text=danger] at (\XBAR-0.06,1.20) {\texttt{WAVE\_COMPLETED}};
+
+% ---- axis -----------------------------------------------------------------
+\draw[tick] (0,\ay) -- (9.3,\ay);
+\draw[tick] (10.0,\ay) -- (\XEND,\ay);
+\draw[tick] (9.30,\ay-0.16) -- (9.48,\ay+0.16);
+\draw[tick] (9.46,\ay-0.16) -- (9.64,\ay+0.16);
+\draw[tick] (9.86,\ay-0.16) -- (10.04,\ay+0.16);
+\draw[tick] (10.02,\ay-0.16) -- (10.20,\ay+0.16);
+\foreach \h in {0,1,2,3,4,5,6} {
+  \draw[tick] (1.5*\h,\ay) -- (1.5*\h,\ay-0.13);
+  \node[lbls, anchor=north] at (1.5*\h,\ay-0.16) {\h};
+}
+\draw[tick] (\XEXP,\ay) -- (\XEXP,\ay-0.13);
+\node[lbls, anchor=north] at (\XEXP,\ay-0.16) {24};
+\draw[tick] (13.6,\ay) -- (13.6,\ay-0.13);
+\node[lbls, anchor=north] at (13.6,\ay-0.16) {$+1$};
+\node[lbls, anchor=north west, align=left] at (0,\ay-0.62)
+  {hours since submission \quad ($t{=}0$ is an 18:00 plan; the provider window closes at 24 h)};
+
+% ---- lane labels ----------------------------------------------------------
+\node[lane] at (\LEFT,\ywzero) {\textbf{wave-0} local};
+\node[lane] at (\LEFT,\yiB-0.22) {\textbf{wave-1} batch\\ 4 items};
+\node[lane, text=dimmed] at (\LEFT,\yhedge) {\textbf{hedge} R8\\ \emph{designed only}};
+\node[lane] at (\LEFT,\ywtwo) {\textbf{wave-2} batch};
+\node[lane] at (\LEFT,\yver) {\textbf{verify} local};
+\node[lane] at (\LEFT,\yrep) {\textbf{morning report}};
+
+% ---- wave-0 ---------------------------------------------------------------
+\draw[itembar, draw=inkgray] (0.05,\ywzero) -- (0.55,\ywzero);
+\node[lbls, anchor=west] at (0.68,\ywzero)
+  {R1 pushdown: ripgrep / AST outline \textemdash{} \$0, no round, no wave};
+
+% ---- wave-1 items ---------------------------------------------------------
+\newcommand{\itemrow}[3]{%
+  \draw[itembar] (0.6,#1) -- (#2,#1);
+  \node[endcap] at (#2,#1) {};
+  \node[lbls, anchor=west] at (#2+0.14,#1) {#3};}
+
+\itemrow{\yiA}{2.1}{item 1 completed}
+\itemrow{\yiB}{3.9}{item 2 completed}
+
+% item 3: never returns, expires at the window ceiling
+\draw[itembar]  (0.6,\yiC) -- (9.2,\yiC);
+\draw[stallbar] (10.05,\yiC) -- (\XEXP,\yiC);
+\node[circle, draw=danger, fill=danger!15, line width=0.5pt, inner sep=1.3pt] at (\XEXP,\yiC) {};
+\node[lbls, anchor=south east, text=danger] at (\XEXP-0.06,\yiC+0.08) {item 3 EXPIRED};
+\draw[ar, draw=danger] (\XEXP,\yiC-0.1) -- (\XEXP,\ywtwo+0.15) -- (12.15,\ywtwo);
+\node[lbls, anchor=north west, align=left, text=danger, text width=3.5cm]
+  at (12.62,\yiC-0.34) {the memo lookup misses,\\ so the node is
+  \texttt{RE\_ENQUEUED}\\ into wave-2};
+
+% item 4: stalls, hedge fires, first result wins
+\draw[itembar]  (0.6,\yiD) -- (6.0,\yiD);
+\draw[stallbar] (6.0,\yiD) -- (7.6,\yiD);
+\node[endcap] at (7.6,\yiD) {};
+\node[lbls, anchor=west] at (7.74,\yiD) {item 4: first result wins};
+\node[lbls, anchor=north east, text=danger] at (5.9,\yiD-0.08) {stall detected ($>4\times$ p50)};
+\draw[dar] (6.0,\yiD-0.36) -- (6.0,\yhedge+0.12);
+\draw[hedgebar] (6.0,\yhedge) -- (7.05,\yhedge);
+\node[circle, fill=dimmed, inner sep=1.1pt] at (7.05,\yhedge) {};
+\draw[dar] (7.05,\yhedge+0.1) -- (7.05,\yiD-0.1);
+\node[dlbl, anchor=north west, align=left, text width=4.6cm,
+      font=\sffamily\fontsize{6}{7}\selectfont] at (7.2,\yhedge+0.18)
+  {realtime duplicate at $1\times$ price. No per-item cancellation exists on either
+   provider, so the loser is billed and discarded (duplicate-and-discard).};
+
+% ---- barrier --------------------------------------------------------------
+\draw[danger, line width=0.9pt] (\XBAR,\yiA+0.42) -- (\XBAR,\ay);
+\node[lbls, text=danger, anchor=south, rotate=90, align=center] at (\XBAR-0.58,\yrep+0.1)
+  {\textbf{BARRIER}: wave-2 forms only when\\ every wave-1 item is terminal};
+
+% ---- wave-2, verify, morning report ---------------------------------------
+\draw[itembar] (12.15,\ywtwo) -- (13.4,\ywtwo);
+\node[endcap] at (13.4,\ywtwo) {};
+\node[lbls, anchor=west] at (13.54,\ywtwo) {re-run of item 3};
+\draw[itembar, draw=inkgray] (13.5,\yver) -- (13.9,\yver);
+\node[lbls, anchor=west] at (14.02,\yver) {\texttt{pytest}};
+\node[boxs, text width=3.5cm, anchor=west, align=left] (rep) at (12.62,\yrep)
+  {\textbf{morning report}: artifacts, the \emph{Assumptions:} ledger,
+   and any \textsc{needs\_human} nodes};
+\draw[ar] (14.1,\yver-0.14) -- (14.1,\yrep+0.42);
+
+% ---- legend ---------------------------------------------------------------
+\def\ly{-7.75}
+\draw[itembar] (0.0,\ly) -- (0.5,\ly);
+\node[lbls, anchor=west] at (0.62,\ly) {shipped};
+\draw[hedgebar] (2.9,\ly) -- (3.4,\ly);
+\node[dlbl, anchor=west, font=\sffamily\fontsize{6}{7}\selectfont] at (3.52,\ly)
+  {designed, not live};
+\draw[stallbar] (6.5,\ly) -- (7.0,\ly);
+\node[lbls, anchor=west] at (7.12,\ly) {item in flight past its stall threshold};
+
+\end{tikzpicture}}

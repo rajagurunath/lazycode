@@ -1,0 +1,86 @@
+% Figure 6 -- where plan-online / execute-on-batch pays: the four-part criterion as a map.
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+
+\tikzset{
+  dot/.style={circle, fill=accent, inner sep=1.7pt},
+  ddot/.style={circle, fill=danger, inner sep=1.7pt},
+  gdot/.style={circle, fill=dimmed, inner sep=1.7pt},
+  pt/.style={font=\sffamily\scriptsize, text=black, inner sep=1.5pt, align=left},
+  qhead/.style={font=\sffamily\bfseries\small, align=center},
+}
+\newcommand{\qsub}[1]{{\sffamily\fontsize{6.8}{8}\selectfont #1}}
+
+\def\XL{0}\def\XM{6.3}\def\XR{13.4}
+\def\YB{0}\def\YM{4.1}\def\YT{8.3}
+
+% ---- quadrant fills -------------------------------------------------------
+\fill[accent!12]  (\XM,\YM) rectangle (\XR,\YT);
+\fill[danger!10]  (\XL,\YM) rectangle (\XM,\YT);
+\fill[dimmed!8]   (\XM,\YB) rectangle (\XR,\YM);
+\fill[dimmed!5]   (\XL,\YB) rectangle (\XM,\YM);
+
+\draw[inkgray!50, line width=0.5pt] (\XL,\YM) -- (\XR,\YM);
+\draw[inkgray!50, line width=0.5pt] (\XM,\YB) -- (\XM,\YT);
+\draw[inkgray!30, line width=0.5pt] (\XL,\YB) rectangle (\XR,\YT);
+
+% ---- quadrant headings ----------------------------------------------------
+\node[qhead, text=accent, anchor=north] at (9.85,\YT-0.15)
+  {PAYS \\[-1pt] \qsub{plan online, execute on batch}};
+\node[qhead, text=danger, anchor=north] at (3.15,\YT-0.15)
+  {NEVER \\[-1pt] \qsub{deferred action silently} \\[-3pt]
+   \qsub{invalidates its own premises}};
+\node[qhead, text=dimmed, anchor=south] at (9.85,\YB+0.15)
+  {USE INTERACTIVE (or \texttt{flex}) \\[-1pt] \qsub{right shape, no width, no laxity}};
+\node[qhead, text=dimmed, anchor=south] at (3.15,\YB+0.15)
+  {OUT OF SCOPE \\[-1pt] \qsub{a person is waiting on a live world}};
+
+\newcommand{\mk}[4]{\node[#4] (p#1) at (#2) {}; \node[pt, anchor=west] at ($(#2)+(0.18,0)$) {#3};}
+
+% ---- upper right: pays ----------------------------------------------------
+\mk{a}{6.65,6.85}{repo-scale migrations}{dot}
+\mk{b}{6.65,6.30}{test-coverage burndown}{dot}
+\mk{c}{6.65,5.75}{corpus extraction under schema contracts}{dot}
+\mk{d}{6.65,5.20}{evaluation / synthetic-data fleets}{dot}
+\mk{e}{6.65,4.65}{IaC changes (\texttt{terraform plan} oracle)}{dot}
+
+% ---- lower right ----------------------------------------------------------
+\mk{f}{6.65,3.10}{one-off deep code task, reviewed step by step}{gdot}
+\mk{g}{6.65,2.55}{urgent single-file bug fix}{gdot}
+
+% ---- upper left -----------------------------------------------------------
+\mk{h}{0.45,6.30}{browser / computer-use fleets}{ddot}
+\mk{i}{0.45,5.75}{CRM and ticket writers}{ddot}
+\mk{j}{0.45,5.20}{agents on unversioned live state}{ddot}
+
+% ---- lower left -----------------------------------------------------------
+\mk{k}{0.45,3.10}{interactive copilots}{gdot}
+\mk{l}{0.45,2.55}{customer-support agents}{gdot}
+\mk{m}{0.45,2.00}{SLA-bound incident triage}{gdot}
+
+% ---- axes -----------------------------------------------------------------
+\draw[arg] (\XL,-0.6) -- (\XR,-0.6);
+\node[lbls, anchor=north west] at (\XL,-0.74) {no};
+\node[lbls, anchor=north east] at (\XR,-0.74) {yes};
+\node[lbl, anchor=north] at (6.7,-0.78)
+  {\textbf{(a) environment snapshottable} $\;+\;$ \textbf{(b) cheap deterministic oracle}};
+
+\draw[arg] (-0.6,\YB) -- (-0.6,\YT);
+\node[lbls, anchor=south east, rotate=90] at (-0.74,\YB) {low};
+\node[lbls, anchor=north east, rotate=90] at (-0.74,\YT) {high};
+\node[lbl, anchor=south, rotate=90] at (-0.78,\YM)
+  {\textbf{(c) width $\gg$ depth} $\;+\;$ \textbf{(d) positive laxity}};
+
+% ---- criterion notes ------------------------------------------------------
+\node[lbls, anchor=north, align=left, text width=13.6cm] at (6.7,-1.42)
+  {\textbf{(a)} LazyCode pins a git commit and applies diffs into an immutable fork, so an
+   18:00 plan is still valid at 03:00.\\
+   \textbf{(b)} \texttt{pytest} and compilers make \textsc{Verify} free and local; where the
+   only verifier is an LLM judge, failure surfaces a wave late and the repair round erases
+   the discount.\\
+   \textbf{(c)} width comes structurally from the task or from inter-run concurrency
+   (\S\ref{sec:economics-width}); once batch and cache discounts stack, width is the
+   currency.\\
+   \textbf{(d)} nobody is waiting.};
+
+\end{tikzpicture}}
