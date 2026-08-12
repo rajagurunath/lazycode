@@ -1,5 +1,7 @@
 # LazyCode — preprint / venue submission package
 
+**PUBLISHED preprint: DOI [10.5281/zenodo.21905469](https://doi.org/10.5281/zenodo.21905469) (Zenodo, 2026-08-12, CC BY 4.0). Publish gate below: SATISFIED (repo public since 2026-08-12).**
+
 Paste-ready metadata for a preprint server (Zenodo; TechRxiv when it reopens).
 Keep in sync with `latex/main.tex`.
 
