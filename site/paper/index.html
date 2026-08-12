@@ -14,65 +14,171 @@
 <meta name="citation_doi" content="10.5281/zenodo.21905469">
 <meta name="citation_abstract_html_url" content="https://rajagurunath.github.io/lazycode/paper/">
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌙</text></svg>">
+
 <style>
-  body{font-family:system-ui;max-width:40rem;margin:4rem auto;line-height:1.6;padding:0 1.25rem;color:#0C1E27;background:#fff}
-  @media (prefers-color-scheme:dark){ body{color:#DCE9EC;background:#11180f} a{color:#a9c79b} }
-  h1{font-size:1.5rem;line-height:1.3;margin-bottom:.25rem}
-  .subtitle{font-size:1.05rem;color:#444;margin:.25rem 0 1rem;font-style:italic}
-  @media (prefers-color-scheme:dark){ .subtitle{color:#a9b294} }
-  .byline{color:#555;margin:.25rem 0}
-  @media (prefers-color-scheme:dark){ .byline{color:#a9b294} }
-  .doi{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.85rem}
-  .abstract{margin:1.75rem 0}
-  .abstract h2{font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:#666;margin-bottom:.5rem}
-  @media (prefers-color-scheme:dark){ .abstract h2{color:#a9b294} }
-  .links{margin:1.5rem 0;padding:0;list-style:none}
-  .links li{margin:.35rem 0}
-  pre{background:#F3F8F8;border:1px solid #C2D2D6;padding:1rem;overflow-x:auto;font-size:.82rem;border-radius:4px}
-  @media (prefers-color-scheme:dark){ pre{background:#1b291d;border-color:#2e4030} }
-  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-  footer{margin-top:3rem;font-size:.85rem;color:#777}
+:root{
+  /* forest at night — same palette as the landing page */
+  --ink:#11180f;
+  --night:#141c13;
+  --surface:#1b291d;
+  --line:#2e4030;
+  --text:#eee9d9;        /* warm paper */
+  --dim:#a9b294;         /* dry sage */
+  --faint:#76825f;       /* lichen */
+  --amber:#e5a44c;       /* lamplight */
+  --amber-soft:#f3cf8f;
+  --fern:#a9c79b;        /* moonlit fern */
+  --fern-dim:#5a7752;
+  --ok:#8fd9b0;
+  --paper-ink:#2a2418;   /* ink on the parchment card */
+  --serif:"Shippori Mincho",Georgia,serif;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --max:1040px;
+  --paper-max:720px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);color:var(--text);background:var(--ink);line-height:1.65;overflow-x:hidden;
+  background-image:radial-gradient(600px 400px at 82% -10%, rgba(229,164,76,.08), transparent 60%),
+                    radial-gradient(500px 380px at 10% 30%, rgba(169,199,155,.06), transparent 65%);
+  background-repeat:no-repeat}
+::selection{background:var(--amber);color:var(--ink)}
+a{color:var(--fern);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--amber);outline-offset:3px;border-radius:2px}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 26px}
+.paper-wrap{max-width:var(--paper-max);margin:0 auto;padding:0 26px}
+
+/* ---------- nav (same language as the landing page) ---------- */
+nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:rgba(17,24,15,.72);border-bottom:1px solid rgba(46,64,48,.5)}
+.nav-inner{display:flex;align-items:center;gap:26px;height:62px}
+.wordmark{font-family:var(--mono);font-weight:500;font-size:16px;color:var(--text);letter-spacing:.01em}
+.wordmark .lazy{color:var(--fern)}
+.nav-links{display:flex;gap:22px;margin-left:auto;align-items:center}
+.nav-links a{font-family:var(--mono);font-size:12.5px;color:var(--dim)}
+.nav-links a:hover{color:var(--text);text-decoration:none}
+.nav-links a.current{color:var(--fern)}
+.gh-btn{border:1px solid var(--line);border-radius:8px;padding:7px 14px;color:var(--text)!important;transition:border-color .3s}
+.gh-btn:hover{border-color:var(--fern)}
+
+/* ---------- paper header ---------- */
+.paper-hero{padding:80px 0 10px}
+.eyebrow{font-family:var(--mono);font-size:12.5px;letter-spacing:.14em;color:var(--fern);text-transform:uppercase;margin-bottom:22px}
+h1{font-family:var(--serif);font-weight:600;font-size:clamp(28px,4.2vw,40px);line-height:1.28;letter-spacing:.005em;color:var(--text)}
+.subtitle{font-family:var(--serif);font-style:italic;font-weight:500;font-size:17px;color:var(--dim);margin:16px 0 22px;line-height:1.5}
+.byline{font-family:var(--mono);font-size:13px;color:var(--dim);margin:.25rem 0}
+.byline .name{color:var(--text)}
+.doi{font-family:var(--mono);font-size:12.5px;color:var(--faint);margin:.4rem 0 0}
+.doi a{color:var(--fern)}
+
+/* ---------- link buttons ---------- */
+.cta-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:32px 0 8px}
+.btn{font-family:var(--mono);font-size:13px;padding:11px 18px;border-radius:9px;display:inline-flex;gap:8px;transition:transform .3s,box-shadow .4s,border-color .3s}
+.btn:hover{text-decoration:none;transform:translateY(-1px)}
+.btn-primary{background:var(--fern);color:var(--ink)}
+.btn-primary:hover{box-shadow:0 8px 28px rgba(169,199,155,.3)}
+.btn-ghost{border:1px solid var(--line);color:var(--text)}
+.btn-ghost:hover{border-color:var(--fern)}
+
+/* ---------- shared section chrome ---------- */
+section{padding:56px 0}
+.sec-eyebrow{font-family:var(--mono);font-size:12px;color:var(--fern);letter-spacing:.16em;text-transform:uppercase;margin-bottom:18px}
+
+/* ---------- abstract: parchment card for legibility ---------- */
+.parchment{
+  background:var(--text);
+  color:var(--paper-ink);
+  border-radius:16px;
+  padding:34px 36px;
+  box-shadow:0 30px 70px rgba(0,0,0,.35), inset 0 0 0 1px rgba(0,0,0,.04);
+}
+.parchment h2{font-family:var(--mono);font-size:.85rem;text-transform:uppercase;letter-spacing:.12em;color:#6b5f3f;margin-bottom:.9rem}
+.parchment p{font-size:16px;line-height:1.75;color:var(--paper-ink)}
+.parchment code{font-family:var(--mono);font-size:.88em;background:rgba(90,119,82,.12);padding:1px 5px;border-radius:4px}
+.parchment em{font-style:italic;color:#4a6b3f}
+
+/* ---------- bibtex: dark terminal-style block, matches quickstart ---------- */
+.bib-block{margin-top:56px;background:rgba(20,17,9,.85);border:1px solid rgba(255,255,255,.14);border-radius:14px;overflow:hidden}
+.bib-head{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid rgba(255,255,255,.1);font-family:var(--mono);font-size:12px;color:var(--dim)}
+.bib-block pre{padding:20px 22px;font-family:var(--mono);font-size:12.5px;line-height:1.85;overflow-x:auto;color:var(--text);white-space:pre}
+.bib-block code{font-family:var(--mono)}
+
+/* ---------- footer (same language as the landing page) ---------- */
+footer{padding:70px 0 54px;background:#161107;border-top:1px solid rgba(255,255,255,.08);margin-top:70px}
+.foot{display:flex;justify-content:space-between;align-items:flex-start;gap:30px;flex-wrap:wrap}
+.foot .wordmark{font-size:15px}
+.foot p{font-family:var(--mono);font-size:12.5px;color:var(--faint);margin-top:12px;max-width:46ch}
+.foot-links{display:flex;gap:22px;font-family:var(--mono);font-size:13px}
+
+@media (max-width:640px){
+  .nav-links a:not(.gh-btn){display:none}
+  .parchment{padding:26px 22px}
+  .paper-hero{padding:56px 0 10px}
+}
 </style>
 </head>
 <body>
 
-<p><a href="../">&larr; lazycode</a></p>
+<nav>
+  <div class="wrap nav-inner">
+    <a href="../" class="wordmark" aria-label="lazycode home"><span class="lazy">lazy</span>code</a>
+    <div class="nav-links">
+      <a href="../#how">how it works</a>
+      <a href="../#economics">economics</a>
+      <a href="../#durability">durability</a>
+      <a href="../#quickstart">quickstart</a>
+      <a href="./" class="current">paper</a>
+      <a class="gh-btn" href="https://github.com/rajagurunath/lazycode">GitHub ↗</a>
+    </div>
+  </div>
+</nav>
 
-<h1>LazyCode: Compiling Interactive Intent into Batch Execution</h1>
-<p class="subtitle">A Query-Optimizer Architecture, Its Economics, and the Limits of Overnight Coding Agents</p>
-<p class="byline">Gurunath Lunkupali Venugopal &middot; August 12, 2026</p>
-<p class="doi">DOI: <a href="https://doi.org/10.5281/zenodo.21905469">10.5281/zenodo.21905469</a></p>
+<header class="paper-hero">
+  <div class="paper-wrap">
+    <p class="eyebrow">the paper</p>
+    <h1>LazyCode: Compiling Interactive Intent into Batch Execution</h1>
+    <p class="subtitle">A Query-Optimizer Architecture, Its Economics, and the Limits of Overnight Coding Agents</p>
+    <p class="byline"><span class="name">Gurunath Lunkupali Venugopal</span> &middot; August 12, 2026</p>
+    <p class="doi">DOI: <a href="https://doi.org/10.5281/zenodo.21905469">10.5281/zenodo.21905469</a></p>
 
-<div class="abstract">
-<h2>Abstract</h2>
-<p>Coding agents call models the way a person would: one synchronous request at a time, at the
-full realtime price. But much of what agents do best &mdash; backlog burndown, migrations,
-test-coverage pushes &mdash; has nobody waiting, and every major provider already sells the
-product for that shape: a batch API, 24-hour window, half price. LazyCode compiles deferrable
-model calls onto that tier. A realtime model <em>plans</em>; the plan then runs overnight as
-barrier-synchronized <em>waves</em> of self-sufficient batch calls, and the barriers,
-memoization and three-window crash recovery are what make paying a provider unattended safe.
-The design transplants database query processing: operator algebra, rewrite rules, physical
-waves, a write-ahead log. We separate what is implemented (18,415 LOC, 413 default-suite
-tests) from what is merely designed or vocabulary. On cost, batch's &sim;50% discount on
-output tokens is unconditional; against a <em>prompt-cached</em> interactive baseline it wins
-on input only when <em>T</em> interactive turns compile to <em>R &lt; T/5</em> batch rounds.
-Where batch and cache discounts stack &mdash; provider-dependent, unverified here &mdash;
-width relaxes that condition, reaching <em>R &lt; 2T</em> only in the <em>N &rarr; &infin;</em>
-limit. One small upstream change &mdash; deferred <em>model</em> requests &mdash; is what
-blocks durable-execution frameworks from treating model calls like deferred tools.</p>
-</div>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="lazycode-paper.pdf">PDF ↓</a>
+      <a class="btn btn-ghost" href="https://doi.org/10.5281/zenodo.21905469">DOI</a>
+      <a class="btn btn-ghost" href="https://github.com/rajagurunath/lazycode">GitHub ↗</a>
+      <a class="btn btn-ghost" href="https://rajagurunath.github.io/tidal/paper/">Companion paper: Tidal ↗</a>
+    </div>
+  </div>
+</header>
 
-<ul class="links">
-  <li><a href="lazycode-paper.pdf"><strong>PDF</strong></a> &mdash; arXiv-style preprint, 17pp</li>
-  <li><a href="https://doi.org/10.5281/zenodo.21905469"><strong>DOI</strong></a> &mdash; 10.5281/zenodo.21905469 (Zenodo)</li>
-  <li><a href="https://github.com/rajagurunath/lazycode"><strong>Code</strong></a> &mdash; rajagurunath/lazycode, Apache-2.0</li>
-  <li><a href="https://rajagurunath.github.io/tidal/paper/"><strong>Companion paper</strong></a> &mdash; Tidal: A Deadline-Contracted Batch Tier for Unmodified LLM Serving Engines (the serving-side system LazyCode's batch client was built for)</li>
-</ul>
+<section>
+  <div class="paper-wrap">
+    <div class="parchment">
+      <h2>Abstract</h2>
+      <p>Coding agents call models the way a person would: one synchronous request at a time, at the
+      full realtime price. But much of what agents do best &mdash; backlog burndown, migrations,
+      test-coverage pushes &mdash; has nobody waiting, and every major provider already sells the
+      product for that shape: a batch API, 24-hour window, half price. LazyCode compiles deferrable
+      model calls onto that tier. A realtime model <em>plans</em>; the plan then runs overnight as
+      barrier-synchronized <em>waves</em> of self-sufficient batch calls, and the barriers,
+      memoization and three-window crash recovery are what make paying a provider unattended safe.
+      The design transplants database query processing: operator algebra, rewrite rules, physical
+      waves, a write-ahead log. We separate what is implemented (18,415 LOC, 413 default-suite
+      tests) from what is merely designed or vocabulary. On cost, batch's &sim;50% discount on
+      output tokens is unconditional; against a <em>prompt-cached</em> interactive baseline it wins
+      on input only when <em>T</em> interactive turns compile to <em>R &lt; T/5</em> batch rounds.
+      Where batch and cache discounts stack &mdash; provider-dependent, unverified here &mdash;
+      width relaxes that condition, reaching <em>R &lt; 2T</em> only in the <em>N &rarr; &infin;</em>
+      limit. One small upstream change &mdash; deferred <em>model</em> requests &mdash; is what
+      blocks durable-execution frameworks from treating model calls like deferred tools.</p>
+    </div>
 
-<div class="abstract">
-<h2>BibTeX</h2>
-<pre><code>@misc{lunkupalivenugopal2026lazycode,
+    <div class="bib-block">
+      <div class="bib-head"><span>BibTeX</span></div>
+      <pre><code>@misc{lunkupalivenugopal2026lazycode,
   title        = {LazyCode: Compiling Interactive Intent into Batch Execution ---
                    A Query-Optimizer Architecture, Its Economics, and the Limits
                    of Overnight Coding Agents},
@@ -82,10 +188,23 @@ blocks durable-execution frameworks from treating model calls like deferred tool
   doi          = {10.5281/zenodo.21905469},
   url          = {https://doi.org/10.5281/zenodo.21905469}
 }</code></pre>
-</div>
+    </div>
+  </div>
+</section>
 
 <footer>
-Source, LaTeX, and measured results: <a href="https://github.com/rajagurunath/lazycode">github.com/rajagurunath/lazycode</a>
+  <div class="wrap foot">
+    <div>
+      <span class="wordmark"><span class="lazy">lazy</span>code</span>
+      <p>Source, LaTeX, and measured results: <a href="https://github.com/rajagurunath/lazycode">github.com/rajagurunath/lazycode</a></p>
+    </div>
+    <div class="foot-links">
+      <a href="../">Home</a>
+      <a href="https://github.com/rajagurunath/lazycode">GitHub</a>
+      <a href="https://pypi.org/project/lazycode-agent/">PyPI</a>
+      <a href="https://rajagurunath.github.io/tidal/paper/">Tidal paper</a>
+    </div>
+  </div>
 </footer>
 
 </body>
