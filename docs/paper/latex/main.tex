@@ -25,7 +25,7 @@
 \maketitle
 
 \begin{abstract}
-Interactive coding agents share an unexamined default: every model call is synchronous, priced at the realtime rate, with a person nominally waiting. The work such agents do best --- backlog burndown, migrations, test-coverage pushes --- has no one waiting, and every major provider sells a second product for exactly that shape: batch APIs with a 24-hour window at half the price. LazyCode is a coding agent built on the batch tier: a realtime model \emph{plans}, and the plan executes overnight as barrier-synchronized \emph{waves} of self-sufficient batch calls. The architecture is a deliberate transplant of database query processing --- operator algebra, rewrite rules, physical waves, an event-sourced log --- and the paper separates what is implemented (16{,}979 LOC, 379 tests, three-window crash recovery) from what is designed, and from what is vocabulary only. Against a prompt-cached interactive baseline, batch wins on input tokens only when batch rounds and interactive turns satisfy $R < T/5$; if batch and cache discounts stack and waves hit the cache, wide waves relax the condition toward $R < 2T$, shifting the burden from depth-collapse to width-supply. A four-part criterion says when this generalizes into agentic frameworks, and one small upstream protocol change --- deferred \emph{model} requests --- is what blocks durable-execution frameworks from treating model calls like deferred tools.
+Coding agents call models the way a person would: one synchronous request at a time, at the full realtime price. But much of what agents do best --- backlog burndown, migrations, test-coverage pushes --- has nobody waiting, and every major provider already sells the product for that shape: a batch API, 24-hour window, half price. LazyCode compiles deferrable model calls onto that tier. A realtime model \emph{plans}; the plan then runs overnight as barrier-synchronized \emph{waves} of self-sufficient batch calls, and the barriers, memoization and three-window crash recovery are what make paying a provider unattended safe. The design transplants database query processing: operator algebra, rewrite rules, physical waves, a write-ahead log. We separate what is implemented (18{,}415 LOC, 413 default-suite tests) from what is merely designed or vocabulary. On cost, batch's $\sim$50\% discount on output tokens is unconditional; against a \emph{prompt-cached} interactive baseline it wins on input only when $T$ interactive turns compile to $R < T/5$ batch rounds. Where batch and cache discounts stack --- provider-dependent, unverified here --- width relaxes that condition, reaching $R < 2T$ only in the $N \to \infty$ limit. One small upstream change --- deferred \emph{model} requests --- is what blocks durable-execution frameworks from treating model calls like deferred tools.
 \end{abstract}
 
 \section{Introduction}
@@ -47,7 +47,7 @@ We make four contributions:
 \item \textbf{A generalization verdict} (\cref{sec:generalization}): a four-part criterion for when the plan-online, execute-on-batch pattern pays, a transfer analysis into Pydantic AI + DBOS and NVIDIA's NeMo Agent Toolkit, and deferred model requests identified as the missing upstream seam. Recommendation: build the wave executor as a library; do not port the planner.
 \end{enumerate}
 
-Throughout, we distinguish three epistemic layers explicitly: what is \emph{implemented and tested} (16{,}979 LOC, 379 tests), what is \emph{designed with plumbing in place}, and what is \emph{vocabulary only}. Research prototypes usually blur these; a paper about honest economics should not.
+Throughout, we distinguish three epistemic layers explicitly: what is \emph{implemented and tested} (18{,}415 LOC, 413 default-suite tests), what is \emph{designed with plumbing in place}, and what is \emph{vocabulary only}. Research prototypes usually blur these; a paper about honest economics should not.
 
 \section{Background: the two products and the honest baseline}
 \label{sec:background}
@@ -95,6 +95,43 @@ At $N{=}1$ the min selects the uncached branch and the condition is the original
 The arithmetic is Anthropic-specific (explicit cache-control with a $2\times$ 1-hour write); OpenAI's automatic positional caching has no write premium, making its optimistic form closer to $R(0.05+0.45/N)$ if the discounts stack there --- a provider-by-provider question the benchmark must settle empirically. Two further honesty notes: our own adapter does not yet request the 1-hour TTL (it sends the default 5-minute \texttt{ephemeral}; the upgrade is a one-line change, listed in \cref{sec:limitations}), and whether the 50\% batch discount applies to cache-read/write \emph{line items} is implied by provider ``stacking'' language but unverified by us.
 
 Two consequences. First, \emph{width is the real currency}: a coding agent must manufacture it by splitting one task along independence boundaries, but fleet workloads (evaluation sweeps, corpus processing) have width by construction --- the key fact behind \cref{sec:generalization}'s verdict. Second, cache hit rates are best-effort (providers cite 30--98\%), and there is a concrete mechanism for missing the ideal: a cache entry becomes readable only after the request that writes it has begun returning, so wave items the provider schedules concurrently can \emph{each} pay the write, degrading one-write-$(N{-}1)$-reads toward $N$ writes. The honest statement is the sensitivity range, not a point estimate, and within-wave hit rate belongs in the benchmark suite as a first-class metric.
+
+\subsection{What ten dollars buys}
+\label{sec:tendollars}
+
+The conditions above are stated in token multiples; a reader wants dollars. So fix a concrete workload and price it at published list rates.\footnote{{\sloppy Anthropic, \emph{Pricing}: \url{https://platform.claude.com/docs/en/about-claude/pricing} --- Claude Haiku 4.5 at \$1.00/Mtok base input, \$1.25 five-minute cache write, \$0.10 cache read, \$5.00 output; Message Batches at \$0.50/\$2.50. OpenAI, \emph{Pricing}: \url{https://developers.openai.com/api/docs/pricing} --- gpt-4o-mini at \$0.15/Mtok input, \$0.075 cached input, \$0.60 output; Batch API at \$0.075/\$0.30. Both accessed 12 August 2026; both providers publish the batch tier as 50\% off input \emph{and} output. Prices move, so \texttt{bench/cost\_report.py} carries the same sheet declaratively and the arithmetic can be re-run against a current one.\par}}
+
+\textbf{One unit of work} $W$: an overnight test-coverage pass over 12 modules of one repository. Shared context $C = 8{,}000$ tokens (execution role, repository outline, house rules) is byte-identical across items; each module contributes $u = 4{,}000$ tokens of unique context and receives $o = 2{,}000$ tokens of generated diff. The interactive agent works the modules sequentially over $T = 36$ turns (three per module) with prompt caching at a \emph{generous} 100\% hit rate --- $C$ written once and read 35 times, each module's $u$ written once and read twice. LazyCode compiles the same unit into one wave of $N = 12$ items ($R = 1$ remote round per node) plus a free local \textsc{Verify}, and, conservatively, assumes \emph{cold} batch caches: none of \cref{sec:economics-width}'s stacking upside is booked. Both sides emit the same 24{,}000 output tokens --- same model, same artifacts, same verifier --- so the comparison holds quality fixed and varies only the tier.
+
+\begin{table}[!htbp]
+\centering\small
+\caption{\textbf{One workload unit $W$, priced at published list rates.} Priced arithmetic over the cost model, \emph{not} a measured invoice --- no provider was billed for this table. The interactive column is prompt-cached at a generous 100\% hit rate; the batch column assumes cold caches. ``Input tokens billed'' counts every token that meets a meter, which is why the interactive side pushes $3\times$ the input volume for the same work: it re-reads $C$ on every turn.}
+\label{tab:tendollars}
+\begin{tabular}{@{}lrrcrr@{}}
+\toprule
+ & \multicolumn{2}{c}{Claude Haiku 4.5} & & \multicolumn{2}{c}{gpt-4o-mini} \\
+\cmidrule(lr){2-3}\cmidrule(lr){5-6}
+Per unit $W$ & interactive & batch & & interactive & batch \\
+\midrule
+Input tokens billed & 432\,k & 144\,k & & 432\,k & 144\,k \\
+Output tokens billed & 24\,k & 24\,k & & 24\,k & 24\,k \\
+\midrule
+Input cost & \$0.1076 & \$0.0720 & & \$0.0366 & \$0.0108 \\
+Output cost & \$0.1200 & \$0.0600 & & \$0.0144 & \$0.0072 \\
+\textbf{Cost per unit} & \textbf{\$0.2276} & \textbf{\$0.1320} & & \textbf{\$0.0510} & \textbf{\$0.0180} \\
+\midrule
+Units bought by \$10 & 43.9 & 75.8 & & 196 & 556 \\
+Saving & \multicolumn{2}{c}{\textbf{42.0\%}} & & \multicolumn{2}{c}{\textbf{64.7\%}} \\
+\$10 of interactive work costs & \multicolumn{2}{c}{\textbf{\$5.80}} & & \multicolumn{2}{c}{\textbf{\$3.53}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\FloatBarrier
+
+So: \$10 spent online-only buys 43.9 units of $W$ on Haiku 4.5; the same \$10 spent through the batch tier buys 75.8, or equivalently the 43.9 units cost \$5.80 instead of \$10. Two things the table shows that the input-side model alone does not. First, \emph{output dominates}: it is 53\% of the interactive bill and 45\% of the batch bill, and it is exactly where the 50\% discount is unconditional --- the contested input win rides on top of a saving that is mostly not contested at all. Second, the size of the win is a property of the \emph{baseline's} cache discount rather than of batch: gpt-4o-mini's cached input is 50\% of list, not the $0.1\times$ Anthropic-style read the derivation in \cref{sec:economics} assumes, so its prompt-cached baseline is weaker and batch looks better. Quoting only the larger number would reproduce the strawman of \cref{sec:background}.
+
+Everything above is priced arithmetic over the cost model, not a measurement. The instrument that does meter it ships --- \texttt{bench/cost\_report.py} runs one workload through both tiers and prices the metered ledger (\cref{sec:implementation}) --- and a real-provider spend measurement is still the named next step.
 
 \subsection{The flex-tier confrontation}
 \label{sec:flex}
@@ -240,7 +277,7 @@ Three discoveries from building against real batch APIs, each of which reshaped 
 \section{Implementation truth}
 \label{sec:implementation}
 
-The system is 16{,}979 lines of Python (8{,}845 in the package, 7{,}281 in tests, 853 in the benchmark harness) with 379 tests. Three findings from auditing our own code, reported because papers rarely do and reviewers always should.
+The system is 18{,}415 lines of Python (8{,}845 in the package, 7{,}680 in tests, 1{,}890 in the benchmark harness) with 413 default tests (415 including 2 deselected e2e tests). Three findings from auditing our own code, reported because papers rarely do and reviewers always should.
 
 \paragraph{The optimizer is an architecture, not yet an optimizer.} The shipped rewrite layer is 200 lines implementing two rules; R2's entire rewrite is one boolean flip under a hardcoded two-file threshold, and R1 trusts a planner-supplied flag rather than analyzing answerability --- moreover its ``free local execution'' currently emits a question-and-scope artifact, not ripgrep/AST output (the operator schema has no \texttt{context\_spec} to harvest), so fan-out driven by a local \textsc{Explore} cannot yet resolve. There is no cost model, no adaptive re-optimization at wave boundaries, and \texttt{Caps}-aware splitting is validated post-hoc by adapters rather than planned around. The query-engine \emph{shape} --- typed IR, rewrite pass, physical lowering, execution --- is real and tested; the query-engine \emph{intelligence} is the roadmap. Relatedly, wave count equals DAG depth today only because a single model makes (provider, model) grouping degenerate, and the statically-computed layer assignment is discarded in favor of dynamically formed, content-addressed waves.
 
@@ -249,6 +286,9 @@ The system is 16{,}979 lines of Python (8{,}845 in the package, 7{,}281 in tests
 \paragraph{Crash safety is the strongest subsystem.} Every claim in \cref{sec:crash} traces to tested code paths --- on the OpenAI-compatible path; the Anthropic W1 adopt-orphan recovery is mock-level (\cref{sec:provider-reality}): the three windows each have a dedicated recovery with a dedicated test, including kill-9-mid-wave resume that adopts the orphaned provider batch rather than double-paying. Where the rest of the system is honest scaffolding, this part is load-bearing today --- which is the right inversion for an unattended-execution product.
 
 \paragraph{Evaluation status.} A benchmark harness (three fixture tasks, a pricing model, and a Claude-Code-CLI baseline runner) ships; the only committed result is a mock-provider plumbing run. The economics of \cref{sec:economics} are therefore \emph{derived and reviewed}, not yet \emph{measured} --- the honest gap a reviewer should press on, and the immediate next step now that the companion self-hosted batch tier provides a meterable execution target (Tidal's gateway recovers 69.3\% of a node's steady-state offline ceiling at $1.18\times$/$1.23\times$ online p50/p99 on a rented A6000 in its own evaluation~\cite{tidal}): the same fixture tasks run end-to-end against self-hosted batch capacity with per-item token ledgers, alongside realized \texttt{rounds\_per\_node} and within-wave cache-hit measurements.
+
+{\sloppy
+One piece of that campaign's instrument is built and running. \texttt{bench/cost\_report.py} executes a single workload through \emph{both} tiers --- online-only, as a sequential realtime call per item, and lazycode's batch waves --- from one plan through the same orchestrator, renderer and harvester, differing only in the adapter; meters the per-call token ledger split into shared prefix, per-item unique context and output; and prices both sides from a declarative sheet of the published list prices of \cref{sec:tendollars}. On metered mock workloads it reproduces this paper's predicted per-item input factor exactly on both branches of the $\min(\cdot)$: the default cold-cache run observes the flat $0.5$ factor (the uncached branch, since batch never hits a cache by default), and with \texttt{--stack-cache} it observes $0.3667$ against $\min(0.5,\,0.05{+}0.95/3)$ at $N{=}3$ --- and reports quality equivalence as exact \emph{by construction}, since both tiers replay the same fixture responses at temperature 0 (a plumbing check, not evidence about model quality). What the instrument cannot do is spend: the default run is a \$0 dry run, its live mode is off by default and gated behind an explicit acknowledgment, and a real-provider spend measurement remains the named next step.\par}
 
 \section{Should this generalize? Frameworks, and an honest verdict}
 \label{sec:generalization}
@@ -302,7 +342,7 @@ The \emph{planner, operator algebra, and code-analysis rules} (R1--R3, R9, the h
 \label{sec:limitations}
 
 {\sloppy
-The economics are derived, not yet measured: no real-provider benchmark run exists; realized \texttt{rounds\_per\_node} is not instrumented (the current counter can only report 1), and within-wave cache hit rates --- on which \cref{sec:economics-width} leans --- are best-effort and unbooked. Provider latency tails are unpublished; the overnight guarantee is ``most nights, with a priced fallback,'' not an SLA, and a hedge that fires re-buys realtime pricing for that item. The optimizer intelligence, hedging, repair, model tiering, vectorization $k{>}1$, and per-item cost accounting are designed but not live; the state machine carries their vocabulary ahead of their arrival. The flex tier undercuts the pure-discount motivation on one provider today. Three code-level debts surfaced by review: the adapter requests the default 5-minute cache TTL rather than the 1-hour TTL the width economics assume; Anthropic-side batch-metadata round-tripping (on which orphan adoption rests) is unverified against the live API; and local \textsc{Explore} produces a scope stub rather than tool output. And the architecture's preconditions --- git-snapshottable state, free oracles --- bound its domain honestly: this is a compiler for a particular, valuable shape of work, not a universal agent runtime.\par}
+The economics are derived and now instrumented, but not yet measured against a provider invoice: \texttt{bench/cost\_report.py} meters and prices both tiers on mock workloads (\cref{sec:implementation}), and the dollar figures of \cref{sec:tendollars} are priced arithmetic rather than observed spend, but no real-provider benchmark run exists; realized \texttt{rounds\_per\_node} is not instrumented (the current counter can only report 1), and within-wave cache hit rates --- on which \cref{sec:economics-width} leans --- are best-effort and unbooked. Provider latency tails are unpublished; the overnight guarantee is ``most nights, with a priced fallback,'' not an SLA, and a hedge that fires re-buys realtime pricing for that item. The optimizer intelligence, hedging, repair, model tiering, vectorization $k{>}1$, and per-item cost accounting are designed but not live; the state machine carries their vocabulary ahead of their arrival. The flex tier undercuts the pure-discount motivation on one provider today. Three code-level debts surfaced by review: the adapter requests the default 5-minute cache TTL rather than the 1-hour TTL the width economics assume; Anthropic-side batch-metadata round-tripping (on which orphan adoption rests) is unverified against the live API; and local \textsc{Explore} produces a scope stub rather than tool output. And the architecture's preconditions --- git-snapshottable state, free oracles --- bound its domain honestly: this is a compiler for a particular, valuable shape of work, not a universal agent runtime.\par}
 
 \section{Conclusion}
 
