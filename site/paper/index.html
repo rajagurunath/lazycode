@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LazyCode: Compiling Interactive Intent into Batch Execution</title>
+<meta name="description" content="A query-optimizer architecture for coding agents: a realtime model plans, then the plan runs overnight as barrier-synchronized waves of batch API calls. The economics, the crash-safety protocol, and the limits of overnight coding agents.">
+
+<!-- Google Scholar / highwire citation metadata -->
+<meta name="citation_title" content="LazyCode: Compiling Interactive Intent into Batch Execution — A Query-Optimizer Architecture, Its Economics, and the Limits of Overnight Coding Agents">
+<meta name="citation_author" content="Lunkupali Venugopal, Gurunath">
+<meta name="citation_publication_date" content="2026/08/12">
+<meta name="citation_pdf_url" content="https://rajagurunath.github.io/lazycode/paper/lazycode-paper.pdf">
+<meta name="citation_doi" content="10.5281/zenodo.21905469">
+<meta name="citation_abstract_html_url" content="https://rajagurunath.github.io/lazycode/paper/">
+
+<style>
+  body{font-family:system-ui;max-width:40rem;margin:4rem auto;line-height:1.6;padding:0 1.25rem;color:#0C1E27;background:#fff}
+  @media (prefers-color-scheme:dark){ body{color:#DCE9EC;background:#11180f} a{color:#a9c79b} }
+  h1{font-size:1.5rem;line-height:1.3;margin-bottom:.25rem}
+  .subtitle{font-size:1.05rem;color:#444;margin:.25rem 0 1rem;font-style:italic}
+  @media (prefers-color-scheme:dark){ .subtitle{color:#a9b294} }
+  .byline{color:#555;margin:.25rem 0}
+  @media (prefers-color-scheme:dark){ .byline{color:#a9b294} }
+  .doi{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.85rem}
+  .abstract{margin:1.75rem 0}
+  .abstract h2{font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:#666;margin-bottom:.5rem}
+  @media (prefers-color-scheme:dark){ .abstract h2{color:#a9b294} }
+  .links{margin:1.5rem 0;padding:0;list-style:none}
+  .links li{margin:.35rem 0}
+  pre{background:#F3F8F8;border:1px solid #C2D2D6;padding:1rem;overflow-x:auto;font-size:.82rem;border-radius:4px}
+  @media (prefers-color-scheme:dark){ pre{background:#1b291d;border-color:#2e4030} }
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  footer{margin-top:3rem;font-size:.85rem;color:#777}
+</style>
+</head>
+<body>
+
+<p><a href="../">&larr; lazycode</a></p>
+
+<h1>LazyCode: Compiling Interactive Intent into Batch Execution</h1>
+<p class="subtitle">A Query-Optimizer Architecture, Its Economics, and the Limits of Overnight Coding Agents</p>
+<p class="byline">Gurunath Lunkupali Venugopal &middot; August 12, 2026</p>
+<p class="doi">DOI: <a href="https://doi.org/10.5281/zenodo.21905469">10.5281/zenodo.21905469</a></p>
+
+<div class="abstract">
+<h2>Abstract</h2>
+<p>Coding agents call models the way a person would: one synchronous request at a time, at the
+full realtime price. But much of what agents do best &mdash; backlog burndown, migrations,
+test-coverage pushes &mdash; has nobody waiting, and every major provider already sells the
+product for that shape: a batch API, 24-hour window, half price. LazyCode compiles deferrable
+model calls onto that tier. A realtime model <em>plans</em>; the plan then runs overnight as
+barrier-synchronized <em>waves</em> of self-sufficient batch calls, and the barriers,
+memoization and three-window crash recovery are what make paying a provider unattended safe.
+The design transplants database query processing: operator algebra, rewrite rules, physical
+waves, a write-ahead log. We separate what is implemented (18,415 LOC, 413 default-suite
+tests) from what is merely designed or vocabulary. On cost, batch's &sim;50% discount on
+output tokens is unconditional; against a <em>prompt-cached</em> interactive baseline it wins
+on input only when <em>T</em> interactive turns compile to <em>R &lt; T/5</em> batch rounds.
+Where batch and cache discounts stack &mdash; provider-dependent, unverified here &mdash;
+width relaxes that condition, reaching <em>R &lt; 2T</em> only in the <em>N &rarr; &infin;</em>
+limit. One small upstream change &mdash; deferred <em>model</em> requests &mdash; is what
+blocks durable-execution frameworks from treating model calls like deferred tools.</p>
+</div>
+
+<ul class="links">
+  <li><a href="lazycode-paper.pdf"><strong>PDF</strong></a> &mdash; arXiv-style preprint, 17pp</li>
+  <li><a href="https://doi.org/10.5281/zenodo.21905469"><strong>DOI</strong></a> &mdash; 10.5281/zenodo.21905469 (Zenodo)</li>
+  <li><a href="https://github.com/rajagurunath/lazycode"><strong>Code</strong></a> &mdash; rajagurunath/lazycode, Apache-2.0</li>
+  <li><a href="https://rajagurunath.github.io/tidal/paper/"><strong>Companion paper</strong></a> &mdash; Tidal: A Deadline-Contracted Batch Tier for Unmodified LLM Serving Engines (the serving-side system LazyCode's batch client was built for)</li>
+</ul>
+
+<div class="abstract">
+<h2>BibTeX</h2>
+<pre><code>@misc{lunkupalivenugopal2026lazycode,
+  title        = {LazyCode: Compiling Interactive Intent into Batch Execution ---
+                   A Query-Optimizer Architecture, Its Economics, and the Limits
+                   of Overnight Coding Agents},
+  author       = {Lunkupali Venugopal, Gurunath},
+  year         = {2026},
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.21905469},
+  url          = {https://doi.org/10.5281/zenodo.21905469}
+}</code></pre>
+</div>
+
+<footer>
+Source, LaTeX, and measured results: <a href="https://github.com/rajagurunath/lazycode">github.com/rajagurunath/lazycode</a>
+</footer>
+
+</body>
+</html>
