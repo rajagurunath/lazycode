@@ -61,7 +61,7 @@ the baseline, and it is a fresh, checkable observation nobody has written up.
 | Q4 | Does quality hold? | "same quality" claim untested | `verify_command` pass rate; unified-diff size; assumption-ledger entries; blind LLM-judge tie-break only where verify passes on both |
 | Q5 | Do batch and cache discounts stack, and at what hit rate? | §Width "unverified line item" | `usage.prompt_tokens_details.cached_tokens` per batch item vs cost; per-provider |
 | Q6 | Batch turnaround distribution | "latency tails unpublished" | submit→completed per batch, per model, time-of-day tagged; expiry count |
-| Q7 | Cross-family generality (incl. the GLM inversion) | economics stated Anthropic/OpenAI-only | repeat Q1–Q6 on 3 families |
+| Q7 | Cross-family generality across three closed 50 %-off providers | economics stated Anthropic/OpenAI-only | repeat Q1–Q6 on 3 families |
 
 ## 4. Design
 
@@ -92,10 +92,15 @@ generators should be cut from real repos the user owns (tidal, lazycode
 itself) so the "particular repo" flavour is genuine, and the task prompt is
 identical byte-for-byte across arms.
 
-**Models (3 families, one each):** `anthropic/claude-haiku-4.5` (explicit
-`cache_control`, 0.1× reads), `openai/gpt-5.4-mini` (positional cache),
-`z-ai/glm-5.2` (open-weight; the inverted-discount case). Optionally
-`anthropic/claude-sonnet-5` on a 3-task subset for a "frontier" row.
+**Models (3 closed families, each with a clean 50 % batch lane — user
+decision 2026-08-19: only 50 %-off models are used to prove the point):**
+`anthropic/claude-haiku-4.5` (explicit `cache_control`, 0.1× reads),
+`openai/gpt-5.4-mini` (positional cache), `google/gemini-3.7-flash`
+(implicit cache). Optionally `anthropic/claude-sonnet-5` on a 3-task subset
+for a "frontier" row. The open-weight marketplace inversion (GLM-5.2, Kimi)
+is **not** an arm — it is reported as a one-paragraph observation from the
+price list, and left out of every saving figure so no reader can say the
+result was diluted or cherry-picked.
 
 **Protocol.** 2 seeds per cell (batch and agents are non-deterministic;
 report mean ± range, not one run). Fresh fixture repo per run. Batches
@@ -106,7 +111,7 @@ summary JSON + CSV).
 
 **Budget.** Cells: 12 tasks × 3 arms × 2 seeds ≈ 72 runs on the Anthropic
 family; ~$0.30–1.50 per interactive Haiku run, ≤ $0.20 per lazycode run →
-≈ $25 for Haiku, ≈ $15 GPT-5.4-mini, ≈ $10 GLM-5.2. **Cap $60; Phase 0
+≈ $25 for Haiku, ≈ $15 GPT-5.4-mini, ≈ $8 Gemini 3.7 Flash. **Cap $60; Phase 0
 smoke ≤ $2.** Every live invocation stays behind `--live
 --yes-spend-real-money` and is never run without an explicit OK (standing
 rule).
@@ -123,7 +128,7 @@ rule).
 | E6 | `bench/compare.py`: three-arm table, per-model, with Q1–Q7 columns; matplotlib figure for the paper (receipted $ per task, three arms, three families) + batch-latency ECDF. | ¼ day |
 | Phase 0 | Smoke on `add-type-hints` × Haiku, all three arms, 1 seed (≤ $2): confirms receipts reconcile with the OR activity page to the cent, batch metadata round-trips, `:batch` results carry `usage`. | 1 h + wait for batch |
 | Phase 1 | Full Anthropic-family run (Q1–Q6). | 1 day wall (batches) |
-| Phase 2 | GPT-5.4-mini + GLM-5.2 (Q7). | 1 day wall |
+| Phase 2 | GPT-5.4-mini + Gemini 3.7 Flash (Q7). | 1 day wall |
 | Phase 3 | Analysis; paper §"Measured economics" replacing the "named next step" language in §Implementation and §Limitations; update site. | ½ day |
 
 Blocked on: an OpenRouter key with ~$60 credit (none in any `.env` today —
