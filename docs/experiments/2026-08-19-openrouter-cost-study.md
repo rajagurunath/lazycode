@@ -83,21 +83,36 @@ prompts are fatter, no conversation cache); (2→3) is the lane discount plus
 Q5/Q6. Reporting both keeps the paper honest about which half of the saving
 is architecture and which half is a price list.
 
-**Tasks.** Extend `bench/tasks/` from 3 to ~12 fixtures, four shapes × three
-instances, all with a mechanical verifier (compileall / pytest / ruff /
-mypy): per-file fan-out (type hints, docstrings, logging), single-module
-generation (coverage), cross-file refactor (rename + call sites; the shape
-that *should* need R>1), and doc/README synthesis. Two of the fixture
-generators should be cut from real repos the user owns (tidal, lazycode
-itself) so the "particular repo" flavour is genuine, and the task prompt is
-identical byte-for-byte across arms.
+**Tasks — three tiers (revised 2026-08-21; replaces the 12-custom-fixture
+plan so the numbers are comparable to published leaderboards, not
+author-picked):**
+
+- **T1 · fan-out, standard**: HumanEval+ (EvalPlus), a fixed 50-problem
+  subset (deterministic sample, seed 7, committed as a problem-id list).
+  Each problem is one wave node; the whole subset is *one* LazyCode wave —
+  the shape the planner was built for. Verifier: the EvalPlus test suite
+  (pass@1, greedy). Caveat recorded up front: prompts are tiny, so the
+  input-token side (compilation vs. conversation cache) is muted here and
+  the 50 % output discount dominates — T1 alone would flatter LazyCode,
+  which is why T2/T3 exist.
+- **T2 · deep, standard**: SWE-bench Verified, 10 instances from the
+  "<15 min" difficulty label (fixed id list, committed). One issue per
+  node, dependent edits, the shape where R approaches T and batch may
+  *lose* — the failure-boundary datapoint. Verifier: the official
+  SWE-bench evaluation harness (docker).
+- **T3 · realism**: the 3 existing custom fixtures (add-type-hints,
+  docstring-pass, coverage-a-module) over real repos — the workload
+  LazyCode was actually designed for, kept as the realism anchor since no
+  standard benchmark has a "sweep this repo" shape.
+
+Task prompts are byte-identical across arms within a tier.
 
 **Models (3 closed families, each with a clean 50 % batch lane — user
 decision 2026-08-19: only 50 %-off models are used to prove the point):**
 `anthropic/claude-haiku-4.5` (explicit `cache_control`, 0.1× reads),
 `openai/gpt-5.4-mini` (positional cache), `google/gemini-3.7-flash`
-(implicit cache). Optionally `anthropic/claude-sonnet-5` on a 3-task subset
-for a "frontier" row. The open-weight marketplace inversion (GLM-5.2, Kimi)
+(implicit cache). Cross-family (GPT-5.4-mini, Gemini 3.7 Flash) runs on **T1 only**;
+T2/T3 are Anthropic-family. The open-weight marketplace inversion (GLM-5.2, Kimi)
 is **not** an arm — it is reported as a one-paragraph observation from the
 price list, and left out of every saving figure so no reader can say the
 result was diluted or cherry-picked.
@@ -109,12 +124,18 @@ tag Q6. All raw responses, ledgers, batch ids and generation ids archived
 under `bench/results/openrouter-2026-08/` (gitignored raw, committed
 summary JSON + CSV).
 
-**Budget.** Cells: 12 tasks × 3 arms × 2 seeds ≈ 72 runs on the Anthropic
-family; ~$0.30–1.50 per interactive Haiku run, ≤ $0.20 per lazycode run →
-≈ $25 for Haiku, ≈ $15 GPT-5.4-mini, ≈ $8 Gemini 3.7 Flash. **Cap $60; Phase 0
-smoke ≤ $2.** Every live invocation stays behind `--live
---yes-spend-real-money` and is never run without an explicit OK (standing
-rule).
+**Budget (revised 2026-08-21).** Hard cap **$25** for the whole study —
+and the provisioned OpenRouter key itself carries a platform-enforced $25
+limit, so overrun is impossible even on a harness bug. Working allocation
+on `claude-haiku-4.5`: T1 three arms ≈ $2.5 (interactive dominates at
+~$0.04/problem), T2 three arms ≈ $6 (interactive ~$0.30/instance), T3 ≈
+$1.5; second seed on T1+T3 ≈ $3; cross-family T1 (GPT-5.4-mini + Gemini
+3.7 Flash) ≈ $4; remainder ≈ $8 reserved for retries, a T2 second seed if
+affordable, and the Phase-0 smoke (≤ $2). The cap is a lab-notebook
+constraint only — the paper reports receipts for what ran and never
+mentions budget mechanics. Every live invocation stays behind `--live
+--yes-spend-real-money` (spend up to the cap authorized by the user
+2026-08-21).
 
 ## 5. Engineering before any money moves
 
@@ -131,9 +152,10 @@ rule).
 | Phase 2 | GPT-5.4-mini + Gemini 3.7 Flash (Q7). | 1 day wall |
 | Phase 3 | Analysis; paper §"Measured economics" replacing the "named next step" language in §Implementation and §Limitations; update site. | ½ day |
 
-Blocked on: an OpenRouter key with ~$60 credit (none in any `.env` today —
-the io.net OpenRouter *provider* account is not a consumer key and must not
-be used for this).
+Unblocked 2026-08-21: a consumer OpenRouter key with a $25 provisioned
+limit is in `lazycode/.env` (`OPENROUTER_API_KEY`; `.env` is gitignored and
+untracked). E5 becomes: T1/T2 dataset fetchers + node generators + verifier
+wrappers (EvalPlus, SWE-bench harness) instead of 9 hand-written fixtures.
 
 ## 6. What this experiment cannot claim, stated up front
 
