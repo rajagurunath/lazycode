@@ -251,3 +251,25 @@ def test_messages_mode_adapter_submits_messages_endpoint():
     wire.script(202, {"id": "batch_m", "status": "validating"})
     a.submit([or_call()], "k")
     assert wire.calls[0][2]["endpoint"] == "/v1/messages"
+
+
+def test_poll_tolerates_transient_404_then_recovers():
+    a, wire = adapter()
+    ref = BatchRef(provider="openrouter-batch", batch_id="b")
+    wire.script(404, {"error": {"message": "not found", "code": 404}})
+    with pytest.raises(RetryableError, match="visibility lag"):
+        a.poll(ref)
+    wire.script(200, _batch_body("in_progress"))
+    assert a.poll(ref).batch_status == "in_progress"
+
+
+def test_poll_persistent_404_goes_fatal():
+    a, wire = adapter()
+    ref = BatchRef(provider="openrouter-batch", batch_id="gone")
+    for _ in range(10):
+        wire.script(404, {"error": {"message": "not found", "code": 404}})
+        with pytest.raises(RetryableError):
+            a.poll(ref)
+    wire.script(404, {"error": {"message": "not found", "code": 404}})
+    with pytest.raises(FatalError):
+        a.poll(ref)

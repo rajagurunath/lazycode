@@ -56,6 +56,10 @@ from lazycode.ir import (
 
 from .base import AdapterError, FatalError, RateLimited, RetryableError
 
+
+class _NotFound(FatalError):
+    """A 404 from the wire — fatal except during post-create visibility lag."""
+
 PROVIDER_NAME = "openrouter-batch"
 DEFAULT_API_KEY_ENV = "OPENROUTER_API_KEY"
 BASE_URL = "https://openrouter.ai/api"
@@ -185,6 +189,10 @@ class OpenRouterBatchAdapter:
         # last GET body per batch id, so a terminal poll's inline results are
         # not re-fetched over the wire by fetch().
         self._last_get: dict[str, dict[str, Any]] = {}
+        # consecutive-404 streak per batch id: a just-created batch is not
+        # immediately visible to GET (observed live 2026-08-21), so early
+        # 404s are retryable; a *persistent* 404 is a real missing batch.
+        self._notfound: dict[str, int] = {}
 
     @classmethod
     def from_env(
@@ -261,7 +269,9 @@ class OpenRouterBatchAdapter:
             raise RateLimited(f"{method} {path} -> 429{detail}")
         if status >= 500:
             raise RetryableError(f"{method} {path} -> {status}{detail}")
-        raise FatalError(f"{method} {path} -> {status}{detail}")
+        raise _NotFound(f"{method} {path} -> 404{detail}") if status == 404 else FatalError(
+            f"{method} {path} -> {status}{detail}"
+        )
 
     # --- protocol ---------------------------------------------------------
 
@@ -306,8 +316,18 @@ class OpenRouterBatchAdapter:
         ``None`` unless a list endpoint exists and grows metadata later."""
         return None
 
+    _NOTFOUND_TOLERANCE = 10
+
     def poll(self, ref: BatchRef) -> BatchStatus:
-        body = self._call("GET", f"/beta/batches/{ref.batch_id}")
+        try:
+            body = self._call("GET", f"/beta/batches/{ref.batch_id}")
+        except _NotFound as exc:
+            streak = self._notfound.get(ref.batch_id, 0) + 1
+            self._notfound[ref.batch_id] = streak
+            if streak > self._NOTFOUND_TOLERANCE:
+                raise FatalError(str(exc)) from exc
+            raise RetryableError(f"{exc} (visibility lag, attempt {streak})") from exc
+        self._notfound.pop(ref.batch_id, None)
         self._last_get[ref.batch_id] = body
         usage = body.get("usage")
         if isinstance(usage, dict):
