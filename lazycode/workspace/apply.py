@@ -147,35 +147,54 @@ def _rollback(worktree_path: Path, paths: list[str]) -> None:
 def apply_diff(worktree: Worktree, diff_text: str) -> AppliedDiff:
     """Apply ``diff_text`` into ``worktree`` via ``git apply --3way``.
 
-    Runs ``git apply --check --3way`` first as a cheap, tree-untouched sanity
-    check, then the real ``git apply --3way``. On any failure the worktree is
-    rolled back and :class:`DiffConflict` is raised with the failing stderr —
-    the caller (scheduler) decides what to do next (§9: spawn an integration
+    Tries ``--3way`` first (exact, index-line-bearing patches), then
+    ``--recount`` (model-generated patches with unreliable hunk counts); each
+    strategy gets a ``--check`` pre-flight. On total failure the worktree is
+    rolled back and :class:`DiffConflict` carries the last stderr — the
+    caller (scheduler) decides what to do next (§9: spawn an integration
     Repair node), this module never guesses a resolution.
     """
     normalized = normalize_diff(diff_text)
     worktree_path = Path(worktree.path)
 
-    check = subprocess.run(
-        ["git", "apply", "--check", "--3way"],
-        cwd=worktree_path,
-        input=normalized,
-        capture_output=True,
-        text=True,
-    )
-    if check.returncode != 0:
-        raise DiffConflict(check.stderr)
+    # Two apply strategies, tried in order (each with its own tree-untouched
+    # --check pre-flight):
+    #   1. --3way: exact patches with index lines (fixture diffs, git-authored
+    #      diffs) get conflict-marker semantics.
+    #   2. --recount: model-generated diffs routinely carry wrong hunk
+    #      line-counts ("corrupt patch at line N" — observed live with
+    #      claude-haiku-4.5 over OpenRouter, 2026-08-21) and no index lines;
+    #      --recount tells git to ignore the stated counts and re-derive them.
+    # On any failure the worktree is rolled back and the LAST stderr is
+    # raised; the caller decides what to do next (§9 Repair), this module
+    # still never guesses a resolution.
+    strategies = (["--3way"], ["--recount"])
+    last_err = ""
+    for extra in strategies:
+        check = subprocess.run(
+            ["git", "apply", "--check", *extra],
+            cwd=worktree_path,
+            input=normalized,
+            capture_output=True,
+            text=True,
+        )
+        if check.returncode != 0:
+            last_err = check.stderr
+            continue
 
-    result = subprocess.run(
-        ["git", "apply", "--3way"],
-        cwd=worktree_path,
-        input=normalized,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
+        result = subprocess.run(
+            ["git", "apply", *extra],
+            cwd=worktree_path,
+            input=normalized,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            break
         files = extract_diff_paths(normalized)
         _rollback(worktree_path, files)
-        raise DiffConflict(result.stdout + result.stderr)
+        last_err = result.stdout + result.stderr
+    else:
+        raise DiffConflict(last_err)
 
     return AppliedDiff(diff_hash=compute_diff_hash(diff_text), files=extract_diff_paths(normalized))

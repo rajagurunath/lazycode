@@ -194,3 +194,35 @@ def test_compute_diff_hash_stable_and_content_derived():
     b = "diff content B\n"
     assert compute_diff_hash(a) == compute_diff_hash(a)
     assert compute_diff_hash(a) != compute_diff_hash(b)
+
+
+def test_apply_diff_recount_rescues_model_generated_bad_hunk_counts(git_repo: GitRepo):
+    """A model-generated diff with wrong hunk line-counts and no index line
+    (git: "corrupt patch") must apply via the --recount fallback — observed
+    live with claude-haiku-4.5 batch output over OpenRouter, 2026-08-21."""
+    git_repo.write("g.txt", "alpha\nbeta\ngamma\n")
+    base = git_repo.commit("initial")
+    wt = create_group_worktree(git_repo.root, base, "jobrc", "grp-rc")
+
+    # Counts claim 1 context line; the hunk actually carries three lines of
+    # content plus the change. Plain `git apply` refuses to parse this.
+    bad_counts_diff = (
+        "--- a/g.txt\n"
+        "+++ b/g.txt\n"
+        "@@ -1,1 +1,1 @@\n"
+        " alpha\n"
+        "-beta\n"
+        "+beta-typed\n"
+        " gamma\n"
+    )
+    applied = apply_diff(wt, bad_counts_diff)
+    assert applied.files == ["g.txt"]
+    assert (wt.path / "g.txt").read_text() == "alpha\nbeta-typed\ngamma\n"
+
+
+def test_apply_diff_truly_corrupt_still_raises(git_repo: GitRepo):
+    git_repo.write("h.txt", "one\n")
+    base = git_repo.commit("initial")
+    wt = create_group_worktree(git_repo.root, base, "jobcc", "grp-cc")
+    with pytest.raises(DiffConflict):
+        apply_diff(wt, "--- a/h.txt\n+++ b/h.txt\n@@ garbage @@\nnot a diff\n")
