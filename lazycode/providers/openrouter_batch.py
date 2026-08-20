@@ -60,6 +60,11 @@ PROVIDER_NAME = "openrouter-batch"
 DEFAULT_API_KEY_ENV = "OPENROUTER_API_KEY"
 BASE_URL = "https://openrouter.ai/api"
 BATCH_ENDPOINT = "/v1/chat/completions"
+#: The Anthropic-skin endpoint. Selecting it makes every result payload an
+#: Anthropic message object — which is exactly what the scheduler's payload
+#: parsers (`lazycode.scheduler.payloads`) speak, so the full orchestrator
+#: pipeline runs over OpenRouter batches with no scheduler changes.
+MESSAGES_ENDPOINT = "/v1/messages"
 BATCH_COMPLETION_WINDOW = "24h"  # the only supported window
 
 _OPENROUTER_CAPS = Caps(
@@ -112,7 +117,20 @@ def build_request_body(call: RenderedCall) -> dict[str, Any]:
     return body
 
 
-def build_batch_payload(items: list[RenderedCall]) -> dict[str, Any]:
+def build_messages_body(call: RenderedCall) -> dict[str, Any]:
+    """Anthropic ``/v1/messages`` body for one request (batch-level model, so
+    the per-request ``model`` is stripped). Reuses the Anthropic adapter's
+    param builder so the two wires cannot drift."""
+    from .anthropic_batch import build_message_params
+
+    body = build_message_params(call)
+    body.pop("model", None)
+    return body
+
+
+def build_batch_payload(
+    items: list[RenderedCall], endpoint: str = BATCH_ENDPOINT
+) -> dict[str, Any]:
     """The full create body. Key order matters: endpoint, model, then requests."""
     if not items:
         raise FatalError("cannot submit an empty batch")
@@ -121,11 +139,12 @@ def build_batch_payload(items: list[RenderedCall]) -> dict[str, Any]:
         raise FatalError(
             f"OpenRouter batches are single-model (batch-level model); got {sorted(models)}"
         )
+    builder = build_messages_body if endpoint == MESSAGES_ENDPOINT else build_request_body
     return {
-        "endpoint": BATCH_ENDPOINT,
+        "endpoint": endpoint,
         "model": items[0].model,
         "requests": [
-            {"custom_id": c.custom_id, "body": build_request_body(c)} for c in items
+            {"custom_id": c.custom_id, "body": builder(c)} for c in items
         ],
     }
 
@@ -147,6 +166,7 @@ class OpenRouterBatchAdapter:
         http_factory: Callable[[], Any] | None = None,
         provider_name: str = PROVIDER_NAME,
         base_url: str = BASE_URL,
+        endpoint: str = BATCH_ENDPOINT,
     ) -> None:
         if http is None and http_factory is None:
             raise ValueError("OpenRouterBatchAdapter requires either http or http_factory")
@@ -156,6 +176,7 @@ class OpenRouterBatchAdapter:
         self._http_factory = http_factory
         self.provider_name = provider_name
         self.base_url = base_url.rstrip("/")
+        self.endpoint = endpoint
         self.last_count_tokens_source: str | None = None
         #: usage dict from the most recent poll/fetch that saw one —
         #: {"prompt_tokens", "completion_tokens", "total_tokens", "cost",
@@ -172,6 +193,7 @@ class OpenRouterBatchAdapter:
         api_key_env: str = DEFAULT_API_KEY_ENV,
         provider_name: str = PROVIDER_NAME,
         base_url: str = BASE_URL,
+        endpoint: str = BATCH_ENDPOINT,
     ) -> OpenRouterBatchAdapter:
         def _make_http() -> Any:
             import os
@@ -198,7 +220,12 @@ class OpenRouterBatchAdapter:
 
             return _HttpxWire()
 
-        return cls(http_factory=_make_http, provider_name=provider_name, base_url=base_url)
+        return cls(
+            http_factory=_make_http,
+            provider_name=provider_name,
+            base_url=base_url,
+            endpoint=endpoint,
+        )
 
     @property
     def _http(self) -> Any:
@@ -258,7 +285,7 @@ class OpenRouterBatchAdapter:
         if known_refs is not None and idempotency_key in known_refs:
             return known_refs[idempotency_key]
 
-        payload = build_batch_payload(items)
+        payload = build_batch_payload(items, self.endpoint)
         encoded = json.dumps(payload).encode("utf-8")
         if len(items) > self.caps.max_items:
             raise FatalError(f"batch of {len(items)} items exceeds Caps.max_items")

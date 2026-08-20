@@ -41,6 +41,7 @@ from lazycode.cli import mock_provider
 from lazycode.ir import Plan
 from lazycode.planner import propose_plan
 from lazycode.providers.anthropic_batch import AnthropicBatchAdapter
+from lazycode.providers.openrouter_batch import MESSAGES_ENDPOINT, OpenRouterBatchAdapter
 from lazycode.providers.realtime import AnthropicRealtimeAdapter
 from lazycode.scheduler import Orchestrator, SchedulerConfig
 from lazycode.store import Store
@@ -88,6 +89,32 @@ def run_task(
                 realtime = mock_provider.build_mock_realtime_adapter(fixture)
                 batch = mock_provider.FixtureBatchAdapter(fixture)
                 plan = Plan.model_validate(fixture["planner_response"])
+            elif provider == "openrouter":
+                # The real pipeline over OpenRouter: planner through the
+                # Anthropic SDK pointed at OpenRouter's /v1/messages skin
+                # (bearer auth), waves through the OpenRouter batch wire in
+                # messages mode -- so every payload stays Anthropic-shaped
+                # and the scheduler's parsers apply unchanged. Model must be
+                # an OpenRouter slug (e.g. anthropic/claude-haiku-4.5).
+                api_key_env = "OPENROUTER_API_KEY"
+                if not os.environ.get(api_key_env):
+                    raise RuntimeError(f"provider='openrouter' needs {api_key_env} set")
+
+                def _or_client() -> Any:
+                    import anthropic
+
+                    return anthropic.Anthropic(
+                        base_url="https://openrouter.ai/api",
+                        auth_token=os.environ[api_key_env],
+                    )
+
+                realtime = AnthropicRealtimeAdapter(client_factory=_or_client)
+                batch = OpenRouterBatchAdapter.from_env(
+                    api_key_env=api_key_env,
+                    provider_name=provider,
+                    endpoint=MESSAGES_ENDPOINT,
+                )
+                plan = propose_plan(task.goal, str(repo_root), realtime, model)
             else:
                 api_key_env = "ANTHROPIC_API_KEY"
                 if not os.environ.get(api_key_env):
@@ -153,7 +180,7 @@ def _collect_stats(store: Store, job_id: str, *, model: str) -> dict[str, Any]:
 def _main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("task", choices=list_tasks())
-    parser.add_argument("--provider", default="mock", choices=["mock", "anthropic"])
+    parser.add_argument("--provider", default="mock", choices=["mock", "anthropic", "openrouter"])
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument(
         "--fixture", type=Path, default=None, help="mock fixture JSON (required for --provider mock)"

@@ -223,3 +223,31 @@ def test_count_tokens_heuristic():
     est = a.count_tokens([make_call(messages=[Message(role="user", content="x" * 400)])])
     assert est.input_tokens == 100 and est.item_count == 1
     assert a.last_count_tokens_source == "heuristic"
+
+
+# --- messages-endpoint mode --------------------------------------------------
+
+
+def test_messages_endpoint_builds_anthropic_bodies_without_model():
+    from lazycode.providers.openrouter_batch import (
+        MESSAGES_ENDPOINT,
+        build_batch_payload,
+    )
+
+    payload = build_batch_payload([or_call("a")], MESSAGES_ENDPOINT)
+    assert payload["endpoint"] == "/v1/messages"
+    assert list(payload.keys()) == ["endpoint", "model", "requests"]
+    body = payload["requests"][0]["body"]
+    assert "model" not in body
+    assert body["messages"] == [{"role": "user", "content": "hello"}]
+    assert body["max_tokens"] == 1024
+
+
+def test_messages_mode_adapter_submits_messages_endpoint():
+    from lazycode.providers.openrouter_batch import MESSAGES_ENDPOINT
+
+    wire = FakeWire()
+    a = OpenRouterBatchAdapter(http=wire, endpoint=MESSAGES_ENDPOINT)
+    wire.script(202, {"id": "batch_m", "status": "validating"})
+    a.submit([or_call()], "k")
+    assert wire.calls[0][2]["endpoint"] == "/v1/messages"
