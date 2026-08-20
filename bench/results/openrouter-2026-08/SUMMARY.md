@@ -39,5 +39,16 @@ Live findings fed back into the code:
 
 ## T2 · deep tier (SWE-bench Verified, 10 × "<15 min fix")
 
-In progress: predictions collected per arm; official harness evaluation
-(docker) pending.
+Receipts (resolution rates pending official docker evaluation):
+
+| arm | receipted $ | $/instance | notes |
+|---|---|---|---|
+| interactive (Claude Code in checkout) | 5.6923 | 0.569 | 10/10 non-empty patches, mean 15.8 turns, 91 s/instance |
+| sync single-shot (oracle file) | 0.2582 | 0.026 | 10/10 patches |
+| batch wave (oracle file) | 0.1291 | 0.013 | 8/10 patches; 2 returned the file unchanged |
+
+- batch:sync = 0.500 exactly, receipted — the discount holds at
+  5k-token prompts, not just toy ones.
+- interactive:batch = 44× per instance BEFORE quality adjustment; the
+  deep tier is where agent iteration should buy the most, so judge only
+  with resolution rates (pending).
