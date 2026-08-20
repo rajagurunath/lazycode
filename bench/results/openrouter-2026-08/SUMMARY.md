@@ -39,16 +39,29 @@ Live findings fed back into the code:
 
 ## T2 · deep tier (SWE-bench Verified, 10 × "<15 min fix")
 
-Receipts (resolution rates pending official docker evaluation):
+Resolution via the official harness (docker, x86 images under emulation):
 
-| arm | receipted $ | $/instance | notes |
-|---|---|---|---|
-| interactive (Claude Code in checkout) | 5.6923 | 0.569 | 10/10 non-empty patches, mean 15.8 turns, 91 s/instance |
-| sync single-shot (oracle file) | 0.2582 | 0.026 | 10/10 patches |
-| batch wave (oracle file) | 0.1291 | 0.013 | 8/10 patches; 2 returned the file unchanged |
+| arm | resolved | receipted $ | $/instance | $/resolved |
+|---|---|---|---|---|
+| interactive (Claude Code in checkout) | 6/10 | 5.6923 | 0.569 | 0.949 |
+| sync single-shot (oracle file) | 8/10 | 0.2582 | 0.026 | 0.032 |
+| batch wave (oracle file) | 8/10 | 0.1291 | 0.013 | 0.016 |
 
-- batch:sync = 0.500 exactly, receipted — the discount holds at
-  5k-token prompts, not just toy ones.
-- interactive:batch = 44× per instance BEFORE quality adjustment; the
-  deep tier is where agent iteration should buy the most, so judge only
-  with resolution rates (pending).
+- batch:sync = 0.500 exactly, receipted; **identical resolved sets**
+  (both miss django-10097 and django-10999).
+- The single-shot arms BEAT the agent (8 vs 6) on this easiest band —
+  with the honest caveat that oracle retrieval hands them the right
+  file, which is part of what the agent's 15.8 mean turns pay for.
+- interactive $/resolved is 59× batch's.
+- Harness-side bug found & fixed during collection: batch diffs were
+  first computed against worktrees the interactive arm had edited
+  (5 bogus apply-errors); baselines now read the pristine base_commit
+  blob via `git show HEAD:path`. Prompts were always pristine (built
+  before the interactive arm ran) — no contamination of any arm's
+  inputs.
+
+## Turnaround asymmetry (T1, same 50-request shape per family)
+
+anthropic 8 min · google ~7 min · openai still in_progress at 2.4 h
+(will update when terminal). The 24 h window is the contract; the
+realized tail is provider-specific.

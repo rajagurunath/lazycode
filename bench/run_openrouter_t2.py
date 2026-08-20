@@ -116,10 +116,17 @@ def file_to_patch(inst: dict, path: str, original: str, new_content: str) -> str
 
 def build_calls(model: str, n: int | None) -> list[tuple[dict, str, str, RenderedCall]]:
     out = []
-    for inst in load_subset()[skip : (skip + n) if n else None]:
+    for inst in load_subset()[: n or None]:
         wt = repo_checkout(inst)
         path = oracle_path(inst)
-        original = (wt / path).read_text()
+        # Pristine blob at base_commit (worktree HEAD), NOT the working
+        # tree: the interactive arm edits these same worktrees, and a
+        # working-tree read after it has run computes diffs against the
+        # wrong baseline (found via 5 harness apply-errors, 2026-08-21).
+        original = subprocess.run(
+            ["git", "-C", str(wt), "show", f"HEAD:{path}"],
+            capture_output=True, text=True, check=True,
+        ).stdout
         prompt = PROMPT_TEMPLATE.format(
             repo=inst["repo"], problem=inst["problem_statement"].strip(),
             path=path, content=original,
