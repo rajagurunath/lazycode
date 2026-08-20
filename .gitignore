@@ -12,3 +12,5 @@ build/
 bench/results/*.json
 !bench/results/.gitkeep
 .env
+bench/results/openrouter-2026-08/
+bench/datasets/cache/
