@@ -116,7 +116,7 @@ def file_to_patch(inst: dict, path: str, original: str, new_content: str) -> str
 
 def build_calls(model: str, n: int | None) -> list[tuple[dict, str, str, RenderedCall]]:
     out = []
-    for inst in load_subset()[: n or None]:
+    for inst in load_subset()[skip : (skip + n) if n else None]:
         wt = repo_checkout(inst)
         path = oracle_path(inst)
         original = (wt / path).read_text()
@@ -215,7 +215,7 @@ def run_batch_collect(batch_id: str, model: str, n: int | None, wait: bool) -> N
     print(f"[batch] receipt: {adapter.last_usage}")
 
 
-def run_interactive(client: httpx.Client, model: str, n: int | None) -> None:
+def run_interactive(client: httpx.Client, model: str, n: int | None, skip: int = 0) -> None:
     claude_bin = shutil.which("claude") or sys.exit("claude CLI not on PATH")
     env = dict(os.environ)
     env["ANTHROPIC_BASE_URL"] = "https://openrouter.ai/api"
@@ -229,8 +229,8 @@ def run_interactive(client: httpx.Client, model: str, n: int | None) -> None:
 
     rows = []
     before = usage()
-    out_stub = f"interactive-{model.split('/')[-1]}"
-    for inst in load_subset()[: n or None]:
+    out_stub = f"interactive-{model.split('/')[-1]}-skip{skip}"
+    for inst in load_subset()[skip : (skip + n) if n else None]:
         wt = repo_checkout(inst)
         subprocess.run(["git", "-C", str(wt), "checkout", "--", "."], capture_output=True)
         prompt = (
@@ -273,6 +273,7 @@ def main() -> None:
     ap.add_argument("--wait", action="store_true")
     ap.add_argument("--model", required=True)
     ap.add_argument("-n", type=int, default=None)
+    ap.add_argument("--skip", type=int, default=0)
     ap.add_argument("--budget-usd", type=float, default=25.0)
     ap.add_argument("--live", action="store_true")
     ap.add_argument("--yes-spend-real-money", action="store_true")
@@ -289,7 +290,7 @@ def main() -> None:
     elif args.arm == "batch":
         run_batch_submit(args.model, args.n)
     elif args.arm == "interactive":
-        run_interactive(client, args.model, args.n)
+        run_interactive(client, args.model, args.n, args.skip)
 
 
 if __name__ == "__main__":
