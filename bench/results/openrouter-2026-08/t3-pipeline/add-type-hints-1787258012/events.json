@@ -1,0 +1,806 @@
+[
+ {
+  "seq": 1,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.327646+00:00",
+  "type": "JOB_CREATED",
+  "payload": {
+   "base_commit": "fbc6787a3f19f3dd823f7c882b1f4d6282a792e1",
+   "budget_usd": null,
+   "deadline_utc": null,
+   "goal": "Add PEP 484 type hints to every function signature in pkg/billing/*.py. Do not change behavior.",
+   "repo": "/Users/gurunathlunkupalivenugopal/ionet/repos/lazycode/bench/results/openrouter-2026-08/t3-pipeline/add-type-hints-1787258012/workdir/repo",
+   "slider": 100
+  }
+ },
+ {
+  "seq": 2,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.385451+00:00",
+  "type": "NODE_ADDED",
+  "payload": {
+   "bindings": null,
+   "deps": [],
+   "exec_class": "local",
+   "group_id": "g0",
+   "model": "anthropic/claude-haiku-4.5",
+   "node_id": "explore_billing_structure",
+   "op": "Explore",
+   "provider": "openrouter",
+   "spec": {
+    "bindings": null,
+    "budget_hint": null,
+    "deps": [],
+    "difficulty_hint": null,
+    "id": "explore_billing_structure",
+    "op": "Explore",
+    "prefer_local": true,
+    "question": "What are the current function signatures, parameter types, and return types in pkg/billing/*.py? Are there any existing type hints or docstrings that indicate expected types?",
+    "scope": [
+     "pkg/billing/invoice.py",
+     "pkg/billing/ledger.py",
+     "pkg/billing/refunds.py"
+    ],
+    "template": false,
+    "template_parent_id": null
+   },
+   "template_parent_id": null
+  }
+ },
+ {
+  "seq": 3,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.385601+00:00",
+  "type": "NODE_ADDED",
+  "payload": {
+   "bindings": null,
+   "deps": [],
+   "exec_class": "local",
+   "group_id": "g0",
+   "model": "anthropic/claude-haiku-4.5",
+   "node_id": "explore_imports",
+   "op": "Explore",
+   "provider": "openrouter",
+   "spec": {
+    "bindings": null,
+    "budget_hint": null,
+    "deps": [],
+    "difficulty_hint": null,
+    "id": "explore_imports",
+    "op": "Explore",
+    "prefer_local": true,
+    "question": "What imports and dependencies are already present in pkg/billing/*.py? Are there any type-related imports (typing, etc.)?",
+    "scope": [
+     "pkg/billing/__init__.py",
+     "pkg/billing/invoice.py",
+     "pkg/billing/ledger.py",
+     "pkg/billing/refunds.py"
+    ],
+    "template": false,
+    "template_parent_id": null
+   },
+   "template_parent_id": null
+  }
+ },
+ {
+  "seq": 4,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.385655+00:00",
+  "type": "NODE_ADDED",
+  "payload": {
+   "bindings": null,
+   "deps": [],
+   "exec_class": "local",
+   "group_id": "g0",
+   "model": "anthropic/claude-haiku-4.5",
+   "node_id": "explore_usage",
+   "op": "Explore",
+   "provider": "openrouter",
+   "spec": {
+    "bindings": null,
+    "budget_hint": null,
+    "deps": [],
+    "difficulty_hint": null,
+    "id": "explore_usage",
+    "op": "Explore",
+    "prefer_local": true,
+    "question": "How are these functions called throughout the codebase? What types are passed to and returned from these functions?",
+    "scope": [
+     "pkg/"
+    ],
+    "template": false,
+    "template_parent_id": null
+   },
+   "template_parent_id": null
+  }
+ },
+ {
+  "seq": 5,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.385717+00:00",
+  "type": "NODE_ADDED",
+  "payload": {
+   "bindings": null,
+   "deps": [
+    "explore_billing_structure",
+    "explore_usage"
+   ],
+   "exec_class": "batch",
+   "group_id": "g0",
+   "model": "anthropic/claude-haiku-4.5",
+   "node_id": "add_hints_invoice",
+   "op": "Edit",
+   "provider": "openrouter",
+   "spec": {
+    "bindings": null,
+    "budget_hint": null,
+    "context_spec": {
+     "extras": {},
+     "files": [
+      "pkg/billing/invoice.py",
+      "pkg/billing/__init__.py"
+     ],
+     "house_rules": false,
+     "repo_map": false
+    },
+    "deps": [
+     "explore_billing_structure",
+     "explore_usage"
+    ],
+    "difficulty_hint": null,
+    "files": [
+     "pkg/billing/invoice.py"
+    ],
+    "id": "add_hints_invoice",
+    "instruction": "Add PEP 484 type hints to all function signatures in this file. Based on the function names and usage patterns: total(items, tax_rate) should accept a list/sequence of items and a numeric tax_rate, returning a numeric total; apply_discount(amount, pct) should accept numeric amount and pct, returning a numeric result. Add appropriate type hints without changing behavior. Preserve all existing code logic.",
+    "op": "Edit",
+    "output_contract": {
+     "files_within": [
+      "pkg/billing/invoice.py"
+     ],
+     "type": "diff"
+    },
+    "template": false,
+    "template_parent_id": null
+   },
+   "template_parent_id": null
+  }
+ },
+ {
+  "seq": 6,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.385777+00:00",
+  "type": "NODE_ADDED",
+  "payload": {
+   "bindings": null,
+   "deps": [
+    "explore_billing_structure",
+    "explore_usage"
+   ],
+   "exec_class": "batch",
+   "group_id": "g0",
+   "model": "anthropic/claude-haiku-4.5",
+   "node_id": "add_hints_ledger",
+   "op": "Edit",
+   "provider": "openrouter",
+   "spec": {
+    "bindings": null,
+    "budget_hint": null,
+    "context_spec": {
+     "extras": {},
+     "files": [
+      "pkg/billing/ledger.py",
+      "pkg/billing/__init__.py"
+     ],
+     "house_rules": false,
+     "repo_map": false
+    },
+    "deps": [
+     "explore_billing_structure",
+     "explore_usage"
+    ],
+    "difficulty_hint": null,
+    "files": [
+     "pkg/billing/ledger.py"
+    ],
+    "id": "add_hints_ledger",
+    "instruction": "Add PEP 484 type hints to all function signatures in this file. Based on the function names and usage patterns: record(entries, entry) should accept a list/sequence of entries and a single entry, returning the updated entries; balance(entries) should accept a list/sequence of entries and return a numeric balance. Add appropriate type hints without changing behavior. Preserve all existing code logic.",
+    "op": "Edit",
+    "output_contract": {
+     "files_within": [
+      "pkg/billing/ledger.py"
+     ],
+     "type": "diff"
+    },
+    "template": false,
+    "template_parent_id": null
+   },
+   "template_parent_id": null
+  }
+ },
+ {
+  "seq": 7,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.385839+00:00",
+  "type": "NODE_ADDED",
+  "payload": {
+   "bindings": null,
+   "deps": [
+    "explore_billing_structure",
+    "explore_usage"
+   ],
+   "exec_class": "batch",
+   "group_id": "g0",
+   "model": "anthropic/claude-haiku-4.5",
+   "node_id": "add_hints_refunds",
+   "op": "Edit",
+   "provider": "openrouter",
+   "spec": {
+    "bindings": null,
+    "budget_hint": null,
+    "context_spec": {
+     "extras": {},
+     "files": [
+      "pkg/billing/refunds.py",
+      "pkg/billing/__init__.py"
+     ],
+     "house_rules": false,
+     "repo_map": false
+    },
+    "deps": [
+     "explore_billing_structure",
+     "explore_usage"
+    ],
+    "difficulty_hint": null,
+    "files": [
+     "pkg/billing/refunds.py"
+    ],
+    "id": "add_hints_refunds",
+    "instruction": "Add PEP 484 type hints to all function signatures in this file. Based on the function names and usage patterns: eligible(order, days_since_purchase) should accept an order object and an integer days_since_purchase, returning a boolean; refund_amount(order, restocking_fee=0) should accept an order object and optional numeric restocking_fee, returning a numeric refund amount. Add appropriate type hints without changing behavior. Preserve all existing code logic.",
+    "op": "Edit",
+    "output_contract": {
+     "files_within": [
+      "pkg/billing/refunds.py"
+     ],
+     "type": "diff"
+    },
+    "template": false,
+    "template_parent_id": null
+   },
+   "template_parent_id": null
+  }
+ },
+ {
+  "seq": 8,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.385884+00:00",
+  "type": "NODE_ADDED",
+  "payload": {
+   "bindings": null,
+   "deps": [
+    "add_hints_invoice",
+    "add_hints_ledger",
+    "add_hints_refunds"
+   ],
+   "exec_class": "local",
+   "group_id": "g0",
+   "model": "anthropic/claude-haiku-4.5",
+   "node_id": "verify_hints",
+   "op": "Verify",
+   "provider": "openrouter",
+   "spec": {
+    "bindings": null,
+    "budget_hint": null,
+    "checks": [
+     {
+      "cmd": "python -m py_compile pkg/billing/invoice.py pkg/billing/ledger.py pkg/billing/refunds.py",
+      "expect_exit": 0,
+      "timeout_s": 30,
+      "type": "command"
+     },
+     {
+      "cmd": "python -m mypy pkg/billing/invoice.py pkg/billing/ledger.py pkg/billing/refunds.py --ignore-missing-imports 2>&1 | head -20",
+      "expect_exit": 0,
+      "timeout_s": 30,
+      "type": "command"
+     }
+    ],
+    "deps": [
+     "add_hints_invoice",
+     "add_hints_ledger",
+     "add_hints_refunds"
+    ],
+    "difficulty_hint": null,
+    "id": "verify_hints",
+    "op": "Verify",
+    "template": false,
+    "template_parent_id": null
+   },
+   "template_parent_id": null
+  }
+ },
+ {
+  "seq": 9,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.385920+00:00",
+  "type": "PLAN_PROPOSED",
+  "payload": {}
+ },
+ {
+  "seq": 10,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.385956+00:00",
+  "type": "PLAN_APPROVED",
+  "payload": {}
+ },
+ {
+  "seq": 11,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.386016+00:00",
+  "type": "LEASE_ACQUIRED",
+  "payload": {
+   "expires_at": "2026-08-20T20:38:41.386016Z",
+   "holder_id": "orch-e405bdb6",
+   "job_id": "job-4cf6019d7a39"
+  }
+ },
+ {
+  "seq": 12,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.386660+00:00",
+  "type": "LEASE_RENEWED",
+  "payload": {
+   "expires_at": "2026-08-20T20:38:41.386660Z",
+   "holder_id": "orch-e405bdb6",
+   "job_id": "job-4cf6019d7a39"
+  }
+ },
+ {
+  "seq": 13,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.386913+00:00",
+  "type": "NODE_READY",
+  "payload": {
+   "node_id": "explore_billing_structure"
+  }
+ },
+ {
+  "seq": 14,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.387010+00:00",
+  "type": "NODE_STATE_CHANGED",
+  "payload": {
+   "from_status": "READY",
+   "node_id": "explore_billing_structure",
+   "to_status": "EXECUTING_LOCAL"
+  }
+ },
+ {
+  "seq": 15,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.387742+00:00",
+  "type": "NODE_DONE",
+  "payload": {
+   "artifact": "5b3009e1fbf75fb548fd0eef3cacf3ca1410ff453e214f521ae55ec138160ecc",
+   "node_id": "explore_billing_structure"
+  }
+ },
+ {
+  "seq": 16,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.387817+00:00",
+  "type": "NODE_READY",
+  "payload": {
+   "node_id": "explore_imports"
+  }
+ },
+ {
+  "seq": 17,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.387876+00:00",
+  "type": "NODE_STATE_CHANGED",
+  "payload": {
+   "from_status": "READY",
+   "node_id": "explore_imports",
+   "to_status": "EXECUTING_LOCAL"
+  }
+ },
+ {
+  "seq": 18,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.388354+00:00",
+  "type": "NODE_DONE",
+  "payload": {
+   "artifact": "f9555a396f4bcd638dc7d3f5d1399e596df7f2ba554c9c6d66013d7d5b773493",
+   "node_id": "explore_imports"
+  }
+ },
+ {
+  "seq": 19,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.388412+00:00",
+  "type": "NODE_READY",
+  "payload": {
+   "node_id": "explore_usage"
+  }
+ },
+ {
+  "seq": 20,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.388470+00:00",
+  "type": "NODE_STATE_CHANGED",
+  "payload": {
+   "from_status": "READY",
+   "node_id": "explore_usage",
+   "to_status": "EXECUTING_LOCAL"
+  }
+ },
+ {
+  "seq": 21,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.388860+00:00",
+  "type": "NODE_DONE",
+  "payload": {
+   "artifact": "d8c9a2be10d4f19c3f88c0afb30a76d3236fab145e6c2ebce3acfd34038e8a63",
+   "node_id": "explore_usage"
+  }
+ },
+ {
+  "seq": 22,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.388914+00:00",
+  "type": "LEASE_RENEWED",
+  "payload": {
+   "expires_at": "2026-08-20T20:38:41.388914Z",
+   "holder_id": "orch-e405bdb6",
+   "job_id": "job-4cf6019d7a39"
+  }
+ },
+ {
+  "seq": 23,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.389071+00:00",
+  "type": "NODE_READY",
+  "payload": {
+   "node_id": "add_hints_invoice"
+  }
+ },
+ {
+  "seq": 24,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.389130+00:00",
+  "type": "NODE_READY",
+  "payload": {
+   "node_id": "add_hints_ledger"
+  }
+ },
+ {
+  "seq": 25,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.389181+00:00",
+  "type": "NODE_READY",
+  "payload": {
+   "node_id": "add_hints_refunds"
+  }
+ },
+ {
+  "seq": 26,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.391758+00:00",
+  "type": "WAVE_FORMED",
+  "payload": {
+   "custom_ids": [
+    "add_hints_invoice",
+    "add_hints_ledger",
+    "add_hints_refunds"
+   ],
+   "exec_class": "batch",
+   "idempotency_key": "f47da32af1ef53e9:0",
+   "model": "anthropic/claude-haiku-4.5",
+   "node_ids": [
+    "add_hints_invoice",
+    "add_hints_ledger",
+    "add_hints_refunds"
+   ],
+   "provider": "openrouter",
+   "wave_id": "f47da32a-0"
+  }
+ },
+ {
+  "seq": 27,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.391926+00:00",
+  "type": "NODE_HARVESTED",
+  "payload": {
+   "node_id": "add_hints_invoice"
+  }
+ },
+ {
+  "seq": 28,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.391993+00:00",
+  "type": "NODE_HARVESTED",
+  "payload": {
+   "node_id": "add_hints_ledger"
+  }
+ },
+ {
+  "seq": 29,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:41.392051+00:00",
+  "type": "NODE_HARVESTED",
+  "payload": {
+   "node_id": "add_hints_refunds"
+  }
+ },
+ {
+  "seq": 30,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:33:44.000860+00:00",
+  "type": "WAVE_SUBMITTED",
+  "payload": {
+   "batch_ref": "batch-1787258023-dPvGuQXTCxUMF1dP1w9L",
+   "idempotency_key": "f47da32af1ef53e9:0",
+   "item_count": 3,
+   "model": "anthropic/claude-haiku-4.5",
+   "node_ids": [
+    "add_hints_invoice",
+    "add_hints_ledger",
+    "add_hints_refunds"
+   ],
+   "provider": "openrouter",
+   "wave_id": "f47da32a-0"
+  }
+ },
+ {
+  "seq": 31,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:04.675840+00:00",
+  "type": "LEASE_RENEWED",
+  "payload": {
+   "expires_at": "2026-08-20T20:41:04.675840Z",
+   "holder_id": "orch-e405bdb6",
+   "job_id": "job-4cf6019d7a39"
+  }
+ },
+ {
+  "seq": 32,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.428188+00:00",
+  "type": "LEASE_RENEWED",
+  "payload": {
+   "expires_at": "2026-08-20T20:41:54.428188Z",
+   "holder_id": "orch-e405bdb6",
+   "job_id": "job-4cf6019d7a39"
+  }
+ },
+ {
+  "seq": 33,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.430994+00:00",
+  "type": "ITEM_RETURNED",
+  "payload": {
+   "call_id": "f47da32a-0:add_hints_refunds",
+   "custom_id": "add_hints_refunds",
+   "status": "completed",
+   "wave_id": "f47da32a-0"
+  }
+ },
+ {
+  "seq": 34,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.431424+00:00",
+  "type": "CONTRACT_RESULT",
+  "payload": {
+   "node_id": "add_hints_refunds",
+   "passed": true
+  }
+ },
+ {
+  "seq": 35,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.431592+00:00",
+  "type": "ARTIFACT_APPLY_INTENT",
+  "payload": {
+   "diff_hash": "c793c093d9dd7b2900a2bc9a894fd9de5ae513e9940c565f8637be8058a2ea22",
+   "node_id": "add_hints_refunds",
+   "worktree": "/Users/gurunathlunkupalivenugopal/ionet/repos/lazycode/bench/results/openrouter-2026-08/t3-pipeline/add-type-hints-1787258012/workdir/repo/.lazycode/worktrees/job-4cf6019d7a39/g0"
+  }
+ },
+ {
+  "seq": 36,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.489926+00:00",
+  "type": "ARTIFACT_APPLIED",
+  "payload": {
+   "diff_hash": "c793c093d9dd7b2900a2bc9a894fd9de5ae513e9940c565f8637be8058a2ea22",
+   "node_id": "add_hints_refunds",
+   "worktree": "/Users/gurunathlunkupalivenugopal/ionet/repos/lazycode/bench/results/openrouter-2026-08/t3-pipeline/add-type-hints-1787258012/workdir/repo/.lazycode/worktrees/job-4cf6019d7a39/g0"
+  }
+ },
+ {
+  "seq": 37,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.490381+00:00",
+  "type": "NODE_DONE",
+  "payload": {
+   "node_id": "add_hints_refunds"
+  }
+ },
+ {
+  "seq": 38,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.491453+00:00",
+  "type": "ITEM_RETURNED",
+  "payload": {
+   "call_id": "f47da32a-0:add_hints_ledger",
+   "custom_id": "add_hints_ledger",
+   "status": "completed",
+   "wave_id": "f47da32a-0"
+  }
+ },
+ {
+  "seq": 39,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.491649+00:00",
+  "type": "CONTRACT_RESULT",
+  "payload": {
+   "node_id": "add_hints_ledger",
+   "passed": true
+  }
+ },
+ {
+  "seq": 40,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.491706+00:00",
+  "type": "ARTIFACT_APPLY_INTENT",
+  "payload": {
+   "diff_hash": "c437de5b81f85f5b5c12e29bd14b393de7ac6d2fca4e59e5d4582dc06e7ede2c",
+   "node_id": "add_hints_ledger",
+   "worktree": "/Users/gurunathlunkupalivenugopal/ionet/repos/lazycode/bench/results/openrouter-2026-08/t3-pipeline/add-type-hints-1787258012/workdir/repo/.lazycode/worktrees/job-4cf6019d7a39/g0"
+  }
+ },
+ {
+  "seq": 41,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.531786+00:00",
+  "type": "ARTIFACT_APPLIED",
+  "payload": {
+   "diff_hash": "c437de5b81f85f5b5c12e29bd14b393de7ac6d2fca4e59e5d4582dc06e7ede2c",
+   "node_id": "add_hints_ledger",
+   "worktree": "/Users/gurunathlunkupalivenugopal/ionet/repos/lazycode/bench/results/openrouter-2026-08/t3-pipeline/add-type-hints-1787258012/workdir/repo/.lazycode/worktrees/job-4cf6019d7a39/g0"
+  }
+ },
+ {
+  "seq": 42,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.532205+00:00",
+  "type": "NODE_DONE",
+  "payload": {
+   "node_id": "add_hints_ledger"
+  }
+ },
+ {
+  "seq": 43,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.533228+00:00",
+  "type": "ITEM_RETURNED",
+  "payload": {
+   "call_id": "f47da32a-0:add_hints_invoice",
+   "custom_id": "add_hints_invoice",
+   "status": "completed",
+   "wave_id": "f47da32a-0"
+  }
+ },
+ {
+  "seq": 44,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.533413+00:00",
+  "type": "CONTRACT_RESULT",
+  "payload": {
+   "node_id": "add_hints_invoice",
+   "passed": true
+  }
+ },
+ {
+  "seq": 45,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.533480+00:00",
+  "type": "ARTIFACT_APPLY_INTENT",
+  "payload": {
+   "diff_hash": "2dbdda9abf865baefe1a9a678842d13fa2eb7a100351e4334a768fc61f4ba191",
+   "node_id": "add_hints_invoice",
+   "worktree": "/Users/gurunathlunkupalivenugopal/ionet/repos/lazycode/bench/results/openrouter-2026-08/t3-pipeline/add-type-hints-1787258012/workdir/repo/.lazycode/worktrees/job-4cf6019d7a39/g0"
+  }
+ },
+ {
+  "seq": 46,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.576535+00:00",
+  "type": "ARTIFACT_APPLIED",
+  "payload": {
+   "diff_hash": "2dbdda9abf865baefe1a9a678842d13fa2eb7a100351e4334a768fc61f4ba191",
+   "node_id": "add_hints_invoice",
+   "worktree": "/Users/gurunathlunkupalivenugopal/ionet/repos/lazycode/bench/results/openrouter-2026-08/t3-pipeline/add-type-hints-1787258012/workdir/repo/.lazycode/worktrees/job-4cf6019d7a39/g0"
+  }
+ },
+ {
+  "seq": 47,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.577197+00:00",
+  "type": "NODE_DONE",
+  "payload": {
+   "node_id": "add_hints_invoice"
+  }
+ },
+ {
+  "seq": 48,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.577281+00:00",
+  "type": "WAVE_COMPLETED",
+  "payload": {
+   "wave_id": "f47da32a-0"
+  }
+ },
+ {
+  "seq": 49,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.577442+00:00",
+  "type": "LEASE_RENEWED",
+  "payload": {
+   "expires_at": "2026-08-20T20:41:54.577442Z",
+   "holder_id": "orch-e405bdb6",
+   "job_id": "job-4cf6019d7a39"
+  }
+ },
+ {
+  "seq": 50,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.577796+00:00",
+  "type": "NODE_READY",
+  "payload": {
+   "node_id": "verify_hints"
+  }
+ },
+ {
+  "seq": 51,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.577888+00:00",
+  "type": "NODE_STATE_CHANGED",
+  "payload": {
+   "from_status": "READY",
+   "node_id": "verify_hints",
+   "to_status": "EXECUTING_LOCAL"
+  }
+ },
+ {
+  "seq": 52,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.655741+00:00",
+  "type": "VERIFY_RESULT",
+  "payload": {
+   "exit_code": 0,
+   "node_id": "verify_hints",
+   "passed": true,
+   "tail": ""
+  }
+ },
+ {
+  "seq": 53,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.655988+00:00",
+  "type": "LEASE_RENEWED",
+  "payload": {
+   "expires_at": "2026-08-20T20:41:54.655988Z",
+   "holder_id": "orch-e405bdb6",
+   "job_id": "job-4cf6019d7a39"
+  }
+ },
+ {
+  "seq": 54,
+  "job_id": "job-4cf6019d7a39",
+  "ts": "2026-08-20T20:36:54.656312+00:00",
+  "type": "JOB_DONE",
+  "payload": {}
+ }
+]

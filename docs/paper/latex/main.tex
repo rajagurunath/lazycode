@@ -274,10 +274,128 @@ Three discoveries from building against real batch APIs, each of which reshaped 
 \label{fig:wavetimeline}
 \end{figure}
 
+
+\section{Measured economics: receipts from a public batch lane}
+\label{sec:measured}
+
+Between drafts of this paper, OpenRouter shipped a beta Batch API: one
+endpoint in front of the closed-model batch lanes, billing half the sync
+per-token price for the same model, with a 24-hour window and inline
+results. This gave the measurement campaign of
+\cref{sec:implementation} a metered public target months before the
+self-hosted one, and we took it. A fourth adapter ($\sim$300 lines
+plus 25 tests) speaks the wire; everything upstream --- planner,
+optimizer, waves, store, verifier --- is the code already described. All
+dollar figures below are \emph{receipts}: the provider-reported
+\texttt{usage.cost} of each batch and the per-generation billing records
+of each sync call, reconciled against the account's own usage meter ---
+not list-price arithmetic.
+
+\paragraph{Setup.} Three arms per task, byte-identical prompts and one
+mechanical verifier across all three. \emph{Interactive}: Claude Code
+headless, one session per task, routed through the same provider ---
+the paper's honest baseline, an agent loop with tool use.
+\emph{Sync}: the LazyCode-shaped single-shot call at full price --- the
+compilation ablation, separating architecture from discount.
+\emph{Batch}: the same calls as one wave through the batch lane --- the
+product. Models are three closed families with a clean 50\% batch lane
+(Claude Haiku 4.5, GPT-5.4-mini, Gemini 3.7 Flash); the fan-out tier is
+HumanEval, a fixed 50-problem subset verified by its own assertion
+suites, with the agent free to iterate and the single-shot arms getting
+exactly one attempt. One seed, temperature 0; raw responses, batch ids,
+generation ids and ledgers are archived in the repository.
+
+\begin{table}[!htbp]
+\centering
+\caption{Fan-out tier (HumanEval subset-50), receipted. ``x/50'' is the
+verifier pass count; \$ is the provider-charged total for all 50
+problems. The batch:sync cost ratio is what the invoice says, not what
+the price page promises.}
+\label{tab:measured}
+\small
+\begin{tabular}{llrrr}
+\toprule
+model & arm & pass & receipted \$ & batch:sync \\
+\midrule
+Haiku 4.5 & interactive & 49/50 & 3.3113 & --- \\
+Haiku 4.5 & sync        & 46/50 & 0.0721 & --- \\
+Haiku 4.5 & batch       & 47/50 & 0.0367 & 0.509 \\
+\addlinespace
+Gemini 3.7 Flash & sync  & 47/50 & 0.0552 & --- \\
+Gemini 3.7 Flash & batch & 49/50 & 0.0281 & 0.510 \\
+\addlinespace
+GPT-5.4-mini & sync  & 46/50 & 0.0520 & --- \\
+GPT-5.4-mini & batch & GPTB1 & GPTB2 & GPTB3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{What the receipts say.} Three results, in decreasing order of
+importance. First, \emph{the compilation is the product}: the agent
+baseline was charged \$0.066 per solved problem against \$0.0014 for the
+same model given a self-sufficient single-shot prompt --- a $46\times$
+gap that has nothing to do with batch pricing. The agent's three turns
+of tool traffic, file round-trips and conversation carry are what
+\cref{sec:selfsufficiency} compiles away. Second, \emph{the 50\% lane is real
+and stacks on top}: batch cost 50.9\% of sync on Haiku and 51.0\% on
+Gemini for identical request bodies, landing the blended
+interactive-to-batch ratio at $90\times$ on this tier. Third,
+\emph{quality holds where the paper predicted it would}: batch matched
+or beat sync on every family (the two lanes run the same weights), and
+the agent's iteration loop bought it $+2$ problems over the one-shot
+arms (49 vs.\ 46--47) --- a real, priced advantage of
+$\sim$\$0.065 per extra solve here, and the honest counterweight
+the repair roadmap (\cref{sec:crash}) exists to close.
+
+Two observations the paper could not have printed before. The
+turnaround objection did not materialize at this scale: every batch ---
+2 to 50 items --- reached terminal state in 90 seconds to nine minutes
+against its 24-hour window (submitted mid-week from IST; no off-peak
+shopping). And self-reported agent telemetry is not a receipt: the CLI
+reported \$15.84 of list-price usage for sessions the provider actually
+billed at \$3.31 --- a $4.8\times$ overstatement (cache discounts and
+routing below list), which is why every number in
+\cref{tab:measured} comes from the biller.
+
+\paragraph{The pipeline run, end to end.} The fan-out tier exercises the
+economics; a separate run exercises the \emph{claim}: that LazyCode
+converts an interactive-shaped goal into batch execution, unattended.
+The \texttt{add-type-hints} fixture task ran through the shipped
+pipeline against the live lane: plan proposed (planner's realtime call
+included), one wave formed and submitted, three items returned, three
+verify contracts passed, three diffs applied, repository-level verify
+green --- \textsc{job\_done} in 193 seconds, wave receipt \$0.00309.
+The store's append-only event log is the evidence artifact, published
+with the run.
+
+That run also put two design claims under live fire. The first attempt
+crashed mid-poll --- the provider's just-created batch was not yet
+visible to reads and the adapter treated the 404 as fatal. Recovery
+behaved exactly as \cref{sec:crash} claims: on resume, the W1 path
+adopted the already-paid batch by its idempotency key and completed the
+job with zero duplicate spend, the receipts showing a single batch. The
+lesson (post-create visibility lag is a provider reality) is now a
+bounded retry in the adapter. Second, every diff in that first wave
+passed its verify contract and then failed to \emph{apply}: the model's
+unified diffs carried wrong hunk line-counts, which \texttt{git apply}
+rejects at parse time. The fix --- try exact apply, fall back to
+\texttt{--recount}, keep the rollback semantics --- took the wave from
+0/3 to 3/3 applied and is the first accuracy improvement this system
+can attribute to a receipted production run rather than a code review.
+
+\paragraph{What this still does not show.} The fan-out tier flatters
+the compilation: prompts are small, so the conversation-cache dynamics
+of \cref{sec:economics-width} barely register, and
+\texttt{rounds\_per\_node} stayed 1 by construction on a shape with no
+dependencies. A deep tier (SWE-bench Verified instances, where the
+agent's iteration should be worth the most) and the within-wave
+cache-stacking measurement remain open, as does a second seed;
+\cref{sec:limitations} keeps the full list.
+
 \section{Implementation truth}
 \label{sec:implementation}
 
-The system is 18{,}415 lines of Python (8{,}845 in the package, 7{,}680 in tests, 1{,}890 in the benchmark harness) with 413 default tests (415 including 2 deselected e2e tests). Three findings from auditing our own code, reported because papers rarely do and reviewers always should.
+The system is 20{,}369 lines of Python (9{,}265 in the package, 7{,}987 in tests, 3{,}117 in the benchmark harness) with 440 default tests (442 including 2 deselected e2e tests). Three findings from auditing our own code, reported because papers rarely do and reviewers always should.
 
 \paragraph{The optimizer is an architecture, not yet an optimizer.} The shipped rewrite layer is 200 lines implementing two rules; R2's entire rewrite is one boolean flip under a hardcoded two-file threshold, and R1 trusts a planner-supplied flag rather than analyzing answerability --- moreover its ``free local execution'' currently emits a question-and-scope artifact, not ripgrep/AST output (the operator schema has no \texttt{context\_spec} to harvest), so fan-out driven by a local \textsc{Explore} cannot yet resolve. There is no cost model, no adaptive re-optimization at wave boundaries, and \texttt{Caps}-aware splitting is validated post-hoc by adapters rather than planned around. The query-engine \emph{shape} --- typed IR, rewrite pass, physical lowering, execution --- is real and tested; the query-engine \emph{intelligence} is the roadmap. Relatedly, wave count equals DAG depth today only because a single model makes (provider, model) grouping degenerate, and the statically-computed layer assignment is discarded in favor of dynamically formed, content-addressed waves.
 
@@ -285,7 +403,7 @@ The system is 18{,}415 lines of Python (8{,}845 in the package, 7{,}680 in tests
 
 \paragraph{Crash safety is the strongest subsystem.} Every claim in \cref{sec:crash} traces to tested code paths --- on the OpenAI-compatible path; the Anthropic W1 adopt-orphan recovery is mock-level (\cref{sec:provider-reality}): the three windows each have a dedicated recovery with a dedicated test, including kill-9-mid-wave resume that adopts the orphaned provider batch rather than double-paying. Where the rest of the system is honest scaffolding, this part is load-bearing today --- which is the right inversion for an unattended-execution product.
 
-\paragraph{Evaluation status.} A benchmark harness (three fixture tasks, a pricing model, and a Claude-Code-CLI baseline runner) ships; the only committed result is a mock-provider plumbing run. The economics of \cref{sec:economics} are therefore \emph{derived and reviewed}, not yet \emph{measured} --- the honest gap a reviewer should press on, and the immediate next step now that the companion self-hosted batch tier provides a meterable execution target (Tidal's gateway recovers 69.3\% of a node's steady-state offline ceiling at $1.18\times$/$1.23\times$ online p50/p99 on a rented A6000 in its own evaluation~\cite{tidal}): the same fixture tasks run end-to-end against self-hosted batch capacity with per-item token ledgers, alongside realized \texttt{rounds\_per\_node} and within-wave cache-hit measurements.
+\paragraph{Evaluation status.} A benchmark harness (fixture tasks, standard-benchmark tiers, a pricing model, and a Claude-Code-CLI baseline runner) ships, and \cref{sec:measured} now reports a receipted real-provider run over a public batch lane. What remains derived rather than measured is narrower: the width economics' cache-stacking term, realized \texttt{rounds\_per\_node} on dependent shapes, and the self-hosted target now that the companion self-hosted batch tier provides a meterable execution target (Tidal's gateway recovers 69.3\% of a node's steady-state offline ceiling at $1.18\times$/$1.23\times$ online p50/p99 on a rented A6000 in its own evaluation~\cite{tidal}): the same fixture tasks run end-to-end against self-hosted batch capacity with per-item token ledgers, alongside realized \texttt{rounds\_per\_node} and within-wave cache-hit measurements.
 
 {\sloppy
 One piece of that campaign's instrument is built and running. \texttt{bench/cost\_report.py} executes a single workload through \emph{both} tiers --- online-only, as a sequential realtime call per item, and lazycode's batch waves --- from one plan through the same orchestrator, renderer and harvester, differing only in the adapter; meters the per-call token ledger split into shared prefix, per-item unique context and output; and prices both sides from a declarative sheet of the published list prices of \cref{sec:tendollars}. On metered mock workloads it reproduces this paper's predicted per-item input factor exactly on both branches of the $\min(\cdot)$: the default cold-cache run observes the flat $0.5$ factor (the uncached branch, since batch never hits a cache by default), and with \texttt{--stack-cache} it observes $0.3667$ against $\min(0.5,\,0.05{+}0.95/3)$ at $N{=}3$ --- and reports quality equivalence as exact \emph{by construction}, since both tiers replay the same fixture responses at temperature 0 (a plumbing check, not evidence about model quality). What the instrument cannot do is spend: the default run is a \$0 dry run, its live mode is off by default and gated behind an explicit acknowledgment, and a real-provider spend measurement remains the named next step.\par}
@@ -342,11 +460,11 @@ The \emph{planner, operator algebra, and code-analysis rules} (R1--R3, R9, the h
 \label{sec:limitations}
 
 {\sloppy
-The economics are derived and now instrumented, but not yet measured against a provider invoice: \texttt{bench/cost\_report.py} meters and prices both tiers on mock workloads (\cref{sec:implementation}), and the dollar figures of \cref{sec:tendollars} are priced arithmetic rather than observed spend, but no real-provider benchmark run exists; realized \texttt{rounds\_per\_node} is not instrumented (the current counter can only report 1), and within-wave cache hit rates --- on which \cref{sec:economics-width} leans --- are best-effort and unbooked. Provider latency tails are unpublished; the overnight guarantee is ``most nights, with a priced fallback,'' not an SLA, and a hedge that fires re-buys realtime pricing for that item. The optimizer intelligence, hedging, repair, model tiering, vectorization $k{>}1$, and per-item cost accounting are designed but not live; the state machine carries their vocabulary ahead of their arrival. The flex tier undercuts the pure-discount motivation on one provider today. Three code-level debts surfaced by review: the adapter requests the default 5-minute cache TTL rather than the 1-hour TTL the width economics assume; Anthropic-side batch-metadata round-tripping (on which orphan adoption rests) is unverified against the live API; and local \textsc{Explore} produces a scope stub rather than tool output. And the architecture's preconditions --- git-snapshottable state, free oracles --- bound its domain honestly: this is a compiler for a particular, valuable shape of work, not a universal agent runtime.\par}
+The headline economics are now measured against a provider invoice on one public lane (\cref{sec:measured}), but at benchmark scale, one seed, on a fan-out-friendly tier: the dollar figures of \cref{sec:tendollars} remain priced arithmetic, no self-hosted-lane run exists, and realized \texttt{rounds\_per\_node} is not instrumented (the current counter can only report 1), and within-wave cache hit rates --- on which \cref{sec:economics-width} leans --- are best-effort and unbooked. Provider latency tails are unpublished; the overnight guarantee is ``most nights, with a priced fallback,'' not an SLA, and a hedge that fires re-buys realtime pricing for that item. The optimizer intelligence, hedging, repair, model tiering, vectorization $k{>}1$, and per-item cost accounting are designed but not live; the state machine carries their vocabulary ahead of their arrival. The flex tier undercuts the pure-discount motivation on one provider today. Three code-level debts surfaced by review: the adapter requests the default 5-minute cache TTL rather than the 1-hour TTL the width economics assume; Anthropic-side batch-metadata round-tripping (on which orphan adoption rests) is unverified against the live API; and local \textsc{Explore} produces a scope stub rather than tool output. And the architecture's preconditions --- git-snapshottable state, free oracles --- bound its domain honestly: this is a compiler for a particular, valuable shape of work, not a universal agent runtime.\par}
 
 \section{Conclusion}
 
-Data systems learned to go from batch to streaming; LazyCode runs the lesson in reverse for agents, and finds the pieces already lying around: a planning model that can emit typed DAGs, providers selling half-price deferred execution, database machinery for making it crash-safe, and --- newly quantified here --- discount stacking that rewards width more than heroic depth-collapse. The system's honest state is a strong skeleton with two shipped rewrite rules, its strongest-tested subsystem in recovery, and unmeasured economics; its honest future is a measurement campaign against its companion self-hosted batch tier, and a small upstream protocol change that would let durable-execution agent frameworks defer a model call. The compiler metaphor sets the standard the project must ultimately meet: not that batch execution is architecturally workable --- the shipped machinery and its crash-safety argue that much --- but that the compilation is profitable, case by case, with the receipts to show it.
+Data systems learned to go from batch to streaming; LazyCode runs the lesson in reverse for agents, and finds the pieces already lying around: a planning model that can emit typed DAGs, providers selling half-price deferred execution, database machinery for making it crash-safe, and --- newly quantified here --- discount stacking that rewards width more than heroic depth-collapse. The system's honest state is a strong skeleton with two shipped rewrite rules, its strongest-tested subsystem in recovery --- a subsystem that has now recovered a real crashed job over a real batch lane without double-paying --- and first receipts (\cref{sec:measured}) in place of previously unmeasured economics; its honest future is the rest of that campaign, including its companion self-hosted batch tier, and a small upstream protocol change that would let durable-execution agent frameworks defer a model call. The compiler metaphor sets the standard the project must ultimately meet: not that batch execution is architecturally workable --- the shipped machinery and its crash-safety argue that much --- but that the compilation is profitable, case by case, with the receipts to show it.
 
 \section*{Acknowledgments}
 The design benefited from adversarial multi-model review; several of this paper's central corrections (the cached-baseline economics, the vacant-speculation example, the width-dependent refinement) were surfaced by reviews that set out to break the claims rather than confirm them.

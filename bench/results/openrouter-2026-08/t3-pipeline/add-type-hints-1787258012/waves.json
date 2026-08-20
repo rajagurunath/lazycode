@@ -1,0 +1,13 @@
+[
+ {
+  "id": "f47da32a-0",
+  "job_id": "job-4cf6019d7a39",
+  "provider": "openrouter",
+  "model": "anthropic/claude-haiku-4.5",
+  "batch_ref": "batch-1787258023-dPvGuQXTCxUMF1dP1w9L",
+  "idempotency_key": "f47da32af1ef53e9:0",
+  "submitted_at": "2026-08-20T20:33:44.000860+00:00",
+  "completed_at": "2026-08-20T20:36:54.577281+00:00",
+  "status": "COMPLETED"
+ }
+]

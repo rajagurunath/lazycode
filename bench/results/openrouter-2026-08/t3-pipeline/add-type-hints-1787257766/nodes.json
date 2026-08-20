@@ -1,0 +1,350 @@
+[
+ {
+  "id": "explore_billing_structure",
+  "job_id": "job-cfca82392ada",
+  "group_id": "g0",
+  "op": "Explore",
+  "spec": {
+   "bindings": null,
+   "budget_hint": null,
+   "deps": [],
+   "difficulty_hint": null,
+   "id": "explore_billing_structure",
+   "op": "Explore",
+   "prefer_local": true,
+   "question": "What are the current function signatures, parameter types, and return types in pkg/billing/*.py? Are there any existing type hints or docstrings that indicate expected types?",
+   "scope": [
+    "pkg/billing/invoice.py",
+    "pkg/billing/ledger.py",
+    "pkg/billing/refunds.py"
+   ],
+   "template": false,
+   "template_parent_id": null
+  },
+  "deps": [],
+  "status": "DONE",
+  "attempt": 0,
+  "wave_id": null,
+  "exec_class": "local",
+  "spec_group_id": null,
+  "branch_label": null,
+  "template_parent_id": null,
+  "bindings": null,
+  "provider": "openrouter",
+  "model": "anthropic/claude-haiku-4.5",
+  "est_in": null,
+  "est_out": null,
+  "act_in": null,
+  "act_out": null,
+  "cost_usd": null,
+  "rounds": 0
+ },
+ {
+  "id": "explore_imports",
+  "job_id": "job-cfca82392ada",
+  "group_id": "g0",
+  "op": "Explore",
+  "spec": {
+   "bindings": null,
+   "budget_hint": null,
+   "deps": [],
+   "difficulty_hint": null,
+   "id": "explore_imports",
+   "op": "Explore",
+   "prefer_local": true,
+   "question": "What imports and dependencies are already present in pkg/billing/*.py? Are there any type-related imports (typing, etc.)?",
+   "scope": [
+    "pkg/billing/__init__.py",
+    "pkg/billing/invoice.py",
+    "pkg/billing/ledger.py",
+    "pkg/billing/refunds.py"
+   ],
+   "template": false,
+   "template_parent_id": null
+  },
+  "deps": [],
+  "status": "DONE",
+  "attempt": 0,
+  "wave_id": null,
+  "exec_class": "local",
+  "spec_group_id": null,
+  "branch_label": null,
+  "template_parent_id": null,
+  "bindings": null,
+  "provider": "openrouter",
+  "model": "anthropic/claude-haiku-4.5",
+  "est_in": null,
+  "est_out": null,
+  "act_in": null,
+  "act_out": null,
+  "cost_usd": null,
+  "rounds": 0
+ },
+ {
+  "id": "explore_usage",
+  "job_id": "job-cfca82392ada",
+  "group_id": "g0",
+  "op": "Explore",
+  "spec": {
+   "bindings": null,
+   "budget_hint": null,
+   "deps": [],
+   "difficulty_hint": null,
+   "id": "explore_usage",
+   "op": "Explore",
+   "prefer_local": true,
+   "question": "How are these functions called throughout the codebase? What types are passed to and returned from these functions?",
+   "scope": [
+    "pkg/"
+   ],
+   "template": false,
+   "template_parent_id": null
+  },
+  "deps": [],
+  "status": "DONE",
+  "attempt": 0,
+  "wave_id": null,
+  "exec_class": "local",
+  "spec_group_id": null,
+  "branch_label": null,
+  "template_parent_id": null,
+  "bindings": null,
+  "provider": "openrouter",
+  "model": "anthropic/claude-haiku-4.5",
+  "est_in": null,
+  "est_out": null,
+  "act_in": null,
+  "act_out": null,
+  "cost_usd": null,
+  "rounds": 0
+ },
+ {
+  "id": "add_hints_invoice",
+  "job_id": "job-cfca82392ada",
+  "group_id": "g0",
+  "op": "Edit",
+  "spec": {
+   "bindings": null,
+   "budget_hint": null,
+   "context_spec": {
+    "extras": {},
+    "files": [
+     "pkg/billing/invoice.py",
+     "pkg/billing/__init__.py"
+    ],
+    "house_rules": false,
+    "repo_map": false
+   },
+   "deps": [
+    "explore_billing_structure",
+    "explore_usage"
+   ],
+   "difficulty_hint": null,
+   "files": [
+    "pkg/billing/invoice.py"
+   ],
+   "id": "add_hints_invoice",
+   "instruction": "Add PEP 484 type hints to all function signatures in this file. Based on the function names and usage patterns: total(items, tax_rate) should accept a list/sequence of items and a numeric tax_rate, returning a numeric total; apply_discount(amount, pct) should accept numeric amount and pct, returning a numeric result. Add appropriate type hints without changing behavior. Preserve all existing code logic.",
+   "op": "Edit",
+   "output_contract": {
+    "files_within": [
+     "pkg/billing/invoice.py"
+    ],
+    "type": "diff"
+   },
+   "template": false,
+   "template_parent_id": null
+  },
+  "deps": [
+   "explore_billing_structure",
+   "explore_usage"
+  ],
+  "status": "NEEDS_HUMAN",
+  "attempt": 0,
+  "wave_id": "f47da32a-0",
+  "exec_class": "batch",
+  "spec_group_id": null,
+  "branch_label": null,
+  "template_parent_id": null,
+  "bindings": null,
+  "provider": "openrouter",
+  "model": "anthropic/claude-haiku-4.5",
+  "est_in": null,
+  "est_out": null,
+  "act_in": null,
+  "act_out": null,
+  "cost_usd": null,
+  "rounds": 0
+ },
+ {
+  "id": "add_hints_ledger",
+  "job_id": "job-cfca82392ada",
+  "group_id": "g0",
+  "op": "Edit",
+  "spec": {
+   "bindings": null,
+   "budget_hint": null,
+   "context_spec": {
+    "extras": {},
+    "files": [
+     "pkg/billing/ledger.py",
+     "pkg/billing/__init__.py"
+    ],
+    "house_rules": false,
+    "repo_map": false
+   },
+   "deps": [
+    "explore_billing_structure",
+    "explore_usage"
+   ],
+   "difficulty_hint": null,
+   "files": [
+    "pkg/billing/ledger.py"
+   ],
+   "id": "add_hints_ledger",
+   "instruction": "Add PEP 484 type hints to all function signatures in this file. Based on the function names and usage patterns: record(entries, entry) should accept a list/sequence of entries and a single entry, returning the updated entries; balance(entries) should accept a list/sequence of entries and return a numeric balance. Add appropriate type hints without changing behavior. Preserve all existing code logic.",
+   "op": "Edit",
+   "output_contract": {
+    "files_within": [
+     "pkg/billing/ledger.py"
+    ],
+    "type": "diff"
+   },
+   "template": false,
+   "template_parent_id": null
+  },
+  "deps": [
+   "explore_billing_structure",
+   "explore_usage"
+  ],
+  "status": "NEEDS_HUMAN",
+  "attempt": 0,
+  "wave_id": "f47da32a-0",
+  "exec_class": "batch",
+  "spec_group_id": null,
+  "branch_label": null,
+  "template_parent_id": null,
+  "bindings": null,
+  "provider": "openrouter",
+  "model": "anthropic/claude-haiku-4.5",
+  "est_in": null,
+  "est_out": null,
+  "act_in": null,
+  "act_out": null,
+  "cost_usd": null,
+  "rounds": 0
+ },
+ {
+  "id": "add_hints_refunds",
+  "job_id": "job-cfca82392ada",
+  "group_id": "g0",
+  "op": "Edit",
+  "spec": {
+   "bindings": null,
+   "budget_hint": null,
+   "context_spec": {
+    "extras": {},
+    "files": [
+     "pkg/billing/refunds.py",
+     "pkg/billing/__init__.py"
+    ],
+    "house_rules": false,
+    "repo_map": false
+   },
+   "deps": [
+    "explore_billing_structure",
+    "explore_usage"
+   ],
+   "difficulty_hint": null,
+   "files": [
+    "pkg/billing/refunds.py"
+   ],
+   "id": "add_hints_refunds",
+   "instruction": "Add PEP 484 type hints to all function signatures in this file. Based on the function names and usage patterns: eligible(order, days_since_purchase) should accept an order object and an integer days_since_purchase, returning a boolean; refund_amount(order, restocking_fee=0) should accept an order object and optional numeric restocking_fee, returning a numeric refund amount. Add appropriate type hints without changing behavior. Preserve all existing code logic.",
+   "op": "Edit",
+   "output_contract": {
+    "files_within": [
+     "pkg/billing/refunds.py"
+    ],
+    "type": "diff"
+   },
+   "template": false,
+   "template_parent_id": null
+  },
+  "deps": [
+   "explore_billing_structure",
+   "explore_usage"
+  ],
+  "status": "NEEDS_HUMAN",
+  "attempt": 0,
+  "wave_id": "f47da32a-0",
+  "exec_class": "batch",
+  "spec_group_id": null,
+  "branch_label": null,
+  "template_parent_id": null,
+  "bindings": null,
+  "provider": "openrouter",
+  "model": "anthropic/claude-haiku-4.5",
+  "est_in": null,
+  "est_out": null,
+  "act_in": null,
+  "act_out": null,
+  "cost_usd": null,
+  "rounds": 0
+ },
+ {
+  "id": "verify_hints",
+  "job_id": "job-cfca82392ada",
+  "group_id": "g0",
+  "op": "Verify",
+  "spec": {
+   "bindings": null,
+   "budget_hint": null,
+   "checks": [
+    {
+     "cmd": "python -m py_compile pkg/billing/invoice.py pkg/billing/ledger.py pkg/billing/refunds.py",
+     "expect_exit": 0,
+     "timeout_s": 30,
+     "type": "command"
+    },
+    {
+     "cmd": "python -m mypy pkg/billing/invoice.py pkg/billing/ledger.py pkg/billing/refunds.py --ignore-missing-imports 2>&1 | head -20",
+     "expect_exit": 0,
+     "timeout_s": 30,
+     "type": "command"
+    }
+   ],
+   "deps": [
+    "add_hints_invoice",
+    "add_hints_ledger",
+    "add_hints_refunds"
+   ],
+   "difficulty_hint": null,
+   "id": "verify_hints",
+   "op": "Verify",
+   "template": false,
+   "template_parent_id": null
+  },
+  "deps": [
+   "add_hints_invoice",
+   "add_hints_ledger",
+   "add_hints_refunds"
+  ],
+  "status": "PENDING",
+  "attempt": 0,
+  "wave_id": null,
+  "exec_class": "local",
+  "spec_group_id": null,
+  "branch_label": null,
+  "template_parent_id": null,
+  "bindings": null,
+  "provider": "openrouter",
+  "model": "anthropic/claude-haiku-4.5",
+  "est_in": null,
+  "est_out": null,
+  "act_in": null,
+  "act_out": null,
+  "cost_usd": null,
+  "rounds": 0
+ }
+]

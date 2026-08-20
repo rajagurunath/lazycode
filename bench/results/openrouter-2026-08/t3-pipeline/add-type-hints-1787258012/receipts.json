@@ -1,0 +1,18 @@
+[
+ {
+  "batch_id": "batch-1787258023-dPvGuQXTCxUMF1dP1w9L",
+  "status": "completed",
+  "request_counts": {
+   "total": 3,
+   "completed": 3,
+   "failed": 0
+  },
+  "usage": {
+   "prompt_tokens": 1065,
+   "completion_tokens": 1023,
+   "total_tokens": 2088,
+   "cost": 0.00309,
+   "is_byok": false
+  }
+ }
+]

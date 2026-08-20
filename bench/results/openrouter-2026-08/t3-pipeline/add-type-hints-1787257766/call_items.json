@@ -1,0 +1,20 @@
+[
+ {
+  "call_id": "f47da32a-0:add_hints_invoice",
+  "node_id": "add_hints_invoice",
+  "custom_id": "add_hints_invoice",
+  "item_status": "completed"
+ },
+ {
+  "call_id": "f47da32a-0:add_hints_ledger",
+  "node_id": "add_hints_ledger",
+  "custom_id": "add_hints_ledger",
+  "item_status": "completed"
+ },
+ {
+  "call_id": "f47da32a-0:add_hints_refunds",
+  "node_id": "add_hints_refunds",
+  "custom_id": "add_hints_refunds",
+  "item_status": "completed"
+ }
+]

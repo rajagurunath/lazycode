@@ -14,3 +14,9 @@ bench/results/*.json
 .env
 bench/results/openrouter-2026-08/
 bench/datasets/cache/
+!bench/results/openrouter-2026-08/
+bench/results/openrouter-2026-08/t1/
+bench/results/openrouter-2026-08/t2/
+!bench/results/openrouter-2026-08/t3-pipeline/
+bench/results/openrouter-2026-08/t3-pipeline/*/workdir/
+!bench/results/openrouter-2026-08/SUMMARY.md

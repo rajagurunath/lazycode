@@ -1,0 +1,13 @@
+{
+ "task": "add-type-hints",
+ "provider": "openrouter",
+ "model": "anthropic/claude-haiku-4.5",
+ "job_id": "job-4cf6019d7a39",
+ "status": "DONE",
+ "waves": 1,
+ "wall_clock_s": 193.271,
+ "tokens_in": 1065,
+ "tokens_out": 1023,
+ "llm_calls": 3,
+ "cost_usd": 0.00309
+}

@@ -1,0 +1,8 @@
+{
+ "status": "NEEDS_HUMAN",
+ "waves": 0,
+ "wall_clock_s": 16.17,
+ "tokens_in": 1065,
+ "tokens_out": 1025,
+ "llm_calls": 3
+}

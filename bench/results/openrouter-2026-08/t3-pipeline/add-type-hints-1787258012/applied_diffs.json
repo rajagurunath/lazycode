@@ -1,0 +1,20 @@
+[
+ {
+  "worktree": "/Users/gurunathlunkupalivenugopal/ionet/repos/lazycode/bench/results/openrouter-2026-08/t3-pipeline/add-type-hints-1787258012/workdir/repo/.lazycode/worktrees/job-4cf6019d7a39/g0",
+  "diff_hash": "c793c093d9dd7b2900a2bc9a894fd9de5ae513e9940c565f8637be8058a2ea22",
+  "node_id": "add_hints_refunds",
+  "applied_at": "2026-08-20T20:36:54.489926+00:00"
+ },
+ {
+  "worktree": "/Users/gurunathlunkupalivenugopal/ionet/repos/lazycode/bench/results/openrouter-2026-08/t3-pipeline/add-type-hints-1787258012/workdir/repo/.lazycode/worktrees/job-4cf6019d7a39/g0",
+  "diff_hash": "c437de5b81f85f5b5c12e29bd14b393de7ac6d2fca4e59e5d4582dc06e7ede2c",
+  "node_id": "add_hints_ledger",
+  "applied_at": "2026-08-20T20:36:54.531786+00:00"
+ },
+ {
+  "worktree": "/Users/gurunathlunkupalivenugopal/ionet/repos/lazycode/bench/results/openrouter-2026-08/t3-pipeline/add-type-hints-1787258012/workdir/repo/.lazycode/worktrees/job-4cf6019d7a39/g0",
+  "diff_hash": "2dbdda9abf865baefe1a9a678842d13fa2eb7a100351e4334a768fc61f4ba191",
+  "node_id": "add_hints_invoice",
+  "applied_at": "2026-08-20T20:36:54.576535+00:00"
+ }
+]

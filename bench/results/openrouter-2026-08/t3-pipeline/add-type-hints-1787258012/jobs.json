@@ -1,0 +1,13 @@
+[
+ {
+  "id": "job-4cf6019d7a39",
+  "goal": "Add PEP 484 type hints to every function signature in pkg/billing/*.py. Do not change behavior.",
+  "repo": "/Users/gurunathlunkupalivenugopal/ionet/repos/lazycode/bench/results/openrouter-2026-08/t3-pipeline/add-type-hints-1787258012/workdir/repo",
+  "base_commit": "fbc6787a3f19f3dd823f7c882b1f4d6282a792e1",
+  "slider": 100,
+  "budget_usd": null,
+  "deadline_utc": null,
+  "status": "DONE",
+  "created_at": "2026-08-20T20:33:41.327646+00:00"
+ }
+]

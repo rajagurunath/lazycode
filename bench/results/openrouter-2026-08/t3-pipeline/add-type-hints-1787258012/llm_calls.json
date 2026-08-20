@@ -1,0 +1,44 @@
+[
+ {
+  "id": "f47da32a-0:add_hints_refunds",
+  "node_id": "add_hints_refunds",
+  "memo_key": "9ea259692843fd7c1c71c669f4879d072ec9b1aa3ee45265a1841b4000d7885f",
+  "mode": "batch",
+  "sample_idx": 0,
+  "provider": "anthropic/claude-haiku-4.5",
+  "request_ref": "96f08be3e08e635bedacb7612438e9e4ca463b602a524d8ff6458becba80dead",
+  "response_ref": "56fc55a5d82244bf1f78700bbfa7d931cfef3e9327930acc0306f3997fe078be",
+  "tokens_in": 379,
+  "tokens_out": 406,
+  "cost_usd": null,
+  "cached": 0
+ },
+ {
+  "id": "f47da32a-0:add_hints_ledger",
+  "node_id": "add_hints_ledger",
+  "memo_key": "a186d5966cfa609e4c24644f79cd81a043132a1ee5c05223ac80893fdc271b0d",
+  "mode": "batch",
+  "sample_idx": 0,
+  "provider": "anthropic/claude-haiku-4.5",
+  "request_ref": "d7f540535f1acdc5b67c07166e756fd1cacee8ff4496828b1a438cbf6131446c",
+  "response_ref": "732cc2eca48ba4b05187a59420d4830b3696a79ac5c84949bb6eaaf09b7a12d2",
+  "tokens_in": 337,
+  "tokens_out": 290,
+  "cost_usd": null,
+  "cached": 0
+ },
+ {
+  "id": "f47da32a-0:add_hints_invoice",
+  "node_id": "add_hints_invoice",
+  "memo_key": "09eb7c4d075eed0829a83fac41dd348830667aeeda5aa4089eeb9b1864e81ea6",
+  "mode": "batch",
+  "sample_idx": 0,
+  "provider": "anthropic/claude-haiku-4.5",
+  "request_ref": "d839f595daa2fb4c9b7cae868b58f172aefea8cfe02dde5b0b826961d76eca24",
+  "response_ref": "25320e598ae55a510bc66e964813bbe1d71a378cdc45b92829a47223243a9693",
+  "tokens_in": 349,
+  "tokens_out": 327,
+  "cost_usd": null,
+  "cached": 0
+ }
+]
