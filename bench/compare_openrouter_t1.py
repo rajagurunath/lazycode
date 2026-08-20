@@ -36,6 +36,9 @@ def load_rows() -> tuple[dict, dict]:
                 prev = rows.get(key)
                 if prev is None or prev["_ts"] <= ts:
                     rows[key] = {**row, "_ts": ts}
+            elif "or_receipted_usd" in row:
+                key = ("__interactive_receipt__", row.get("model"), path.name)
+                rows[key] = {**row, "_ts": ts}
             elif "usage" in row and "batch_id" in row and row.get("usage"):
                 model = row.get("model") or _model_from_name(path.name)
                 batch_usage[model] = {**row, "_ts": ts}
@@ -55,7 +58,11 @@ def main() -> None:
 
     rows, batch_usage = load_rows()
     cells: dict[tuple, list[dict]] = defaultdict(list)
+    inter_receipts: dict[str, float] = defaultdict(float)
     for (arm, model, _tid), row in rows.items():
+        if arm == "__interactive_receipt__":
+            inter_receipts[model or "?"] += row.get("or_receipted_usd") or 0
+            continue
         cells[(model or "?", arm)].append(row)
 
     table = []
@@ -73,6 +80,10 @@ def main() -> None:
             "mean_turns": round(sum(turns) / len(turns), 1) if turns else None,
         }
         table.append(entry)
+
+    for entry in table:
+        if entry["arm"] == "interactive" and inter_receipts.get(entry["model"]):
+            entry["receipted_usd"] = round(inter_receipts[entry["model"]], 6)
 
     # batch receipts are batch-level, attach + derive per-model discount
     for model, u in batch_usage.items():
