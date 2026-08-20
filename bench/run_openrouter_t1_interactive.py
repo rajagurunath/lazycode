@@ -80,6 +80,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     ap.add_argument("-n", type=int, default=None)
+    ap.add_argument("--skip", type=int, default=0)
     ap.add_argument("--seed-tag", default="s1")
     ap.add_argument("--budget-usd", type=float, default=25.0)
     ap.add_argument("--live", action="store_true")
@@ -103,12 +104,18 @@ def main() -> None:
         env.pop(var, None)
 
     probs = he.load_problems()
-    ids = he.subset_ids()[: args.n or None]
+    ids = he.subset_ids()[args.skip : (args.skip + args.n) if args.n else None]
     usage_before = key_usage(client)
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    out = RESULTS_DIR / (
+        f"interactive-{args.model.split('/')[-1]}-{args.seed_tag}"
+        f"-skip{args.skip}-{int(time.time())}.json"
+    )
     rows = []
     for tid in ids:
         row = run_one(claude_bin, probs[tid], args.model, env)
         rows.append(row)
+        out.write_text(json.dumps(rows, indent=1, default=str))
         print(f"  {tid}: {'PASS' if row.get('passed') else 'FAIL'} "
               f"cli=${row.get('cli_cost_usd') or 0:.4f} turns={row.get('num_turns')} "
               f"{row.get('wall_s', '?')}s")
@@ -118,8 +125,6 @@ def main() -> None:
                "passed": sum(r.get("passed") is True for r in rows),
                "or_receipted_usd": round(usage_after - usage_before, 6),
                "cli_reported_usd": round(sum(r.get("cli_cost_usd") or 0 for r in rows), 6)}
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    out = RESULTS_DIR / f"interactive-{args.model.split('/')[-1]}-{args.seed_tag}-{int(time.time())}.json"
     out.write_text(json.dumps(rows + [summary], indent=1, default=str))
     print(f"[out] {out}")
     print(f"[interactive] {summary['passed']}/{summary['n']} pass, "
