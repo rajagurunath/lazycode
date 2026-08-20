@@ -14,7 +14,7 @@ never list prices. Verifier identical across arms within a tier.
 | gemini-3.7-flash | sync | 47/50 | 0.0552 | — |
 | gemini-3.7-flash | batch | 49/50 | 0.0281 | 0.510 |
 | gpt-5.4-mini | sync | 46/50 | 0.0520 | — |
-| gpt-5.4-mini | batch | (in flight) | | |
+| gpt-5.4-mini | batch | 47/50 | 0.0255 | 0.491 |
 
 - Interactive → sync (compilation effect): ~46× per solved problem.
 - Sync → batch (lane discount): ×1.96. Blended: ~90×.
@@ -62,6 +62,6 @@ Resolution via the official harness (docker, x86 images under emulation):
 
 ## Turnaround asymmetry (T1, same 50-request shape per family)
 
-anthropic 8 min · google ~7 min · openai still in_progress at 2.4 h
-(will update when terminal). The 24 h window is the contract; the
-realized tail is provider-specific.
+anthropic 8 min · google ~7 min · openai 209 min (3.5 h) — a 25×
+spread on one workload. The 24 h window is the contract; the realized
+tail is provider-specific.

@@ -325,7 +325,7 @@ Gemini 3.7 Flash & sync  & 47/50 & 0.0552 & --- \\
 Gemini 3.7 Flash & batch & 49/50 & 0.0281 & 0.510 \\
 \addlinespace
 GPT-5.4-mini & sync  & 46/50 & 0.0520 & --- \\
-GPT-5.4-mini & batch & \multicolumn{3}{c}{in flight at press time (see text)} \\
+GPT-5.4-mini & batch & 47/50 & 0.0255 & 0.491 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -337,8 +337,8 @@ same model given a self-sufficient single-shot prompt --- a $46\times$
 gap that has nothing to do with batch pricing. The agent's three turns
 of tool traffic, file round-trips and conversation carry are what
 \cref{sec:selfsufficiency} compiles away. Second, \emph{the 50\% lane is real
-and stacks on top}: batch cost 50.9\% of sync on Haiku and 51.0\% on
-Gemini for identical request bodies, landing the blended
+and stacks on top}: batch cost 50.9\% of sync on Haiku, 51.0\% on
+Gemini, and 49.1\% on GPT-5.4-mini for identical request bodies, landing the blended
 interactive-to-batch ratio at $90\times$ on this tier. Third,
 \emph{quality holds where the paper predicted it would}: batch matched
 or beat sync on every family (the two lanes run the same weights), and
@@ -351,9 +351,10 @@ Two observations the paper could not have printed before. Batch
 turnaround is a \emph{provider} property, not a lane property: every
 Anthropic- and Google-routed batch --- 2 to 50 items --- reached
 terminal state in 90 seconds to nine minutes against its 24-hour
-window, while the identically-shaped OpenAI-routed batch had completed
-0 of 50 requests 2.4 hours after submission and was still inside its
-window when this draft was built. The 24-hour window is the contract;
+window, while the identically-shaped OpenAI-routed batch sat at 0 of
+50 completed for its first 2.4 hours and finalized at 3.5 hours --- a
+$25\times$ spread between providers on one workload. The 24-hour window
+is the contract;
 the realized tail is who you are routed to --- which is exactly why
 LazyCode prices the deadline, not the typical case
 (\cref{sec:economics}). And self-reported agent telemetry is not a receipt: the CLI
