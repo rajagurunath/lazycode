@@ -325,7 +325,7 @@ Gemini 3.7 Flash & sync  & 47/50 & 0.0552 & --- \\
 Gemini 3.7 Flash & batch & 49/50 & 0.0281 & 0.510 \\
 \addlinespace
 GPT-5.4-mini & sync  & 46/50 & 0.0520 & --- \\
-GPT-5.4-mini & batch & GPTB1 & GPTB2 & GPTB3 \\
+GPT-5.4-mini & batch & \multicolumn{3}{c}{in flight at press time (see text)} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -347,11 +347,16 @@ arms (49 vs.\ 46--47) --- a real, priced advantage of
 $\sim$\$0.065 per extra solve here, and the honest counterweight
 the repair roadmap (\cref{sec:crash}) exists to close.
 
-Two observations the paper could not have printed before. The
-turnaround objection did not materialize at this scale: every batch ---
-2 to 50 items --- reached terminal state in 90 seconds to nine minutes
-against its 24-hour window (submitted mid-week from IST; no off-peak
-shopping). And self-reported agent telemetry is not a receipt: the CLI
+Two observations the paper could not have printed before. Batch
+turnaround is a \emph{provider} property, not a lane property: every
+Anthropic- and Google-routed batch --- 2 to 50 items --- reached
+terminal state in 90 seconds to nine minutes against its 24-hour
+window, while the identically-shaped OpenAI-routed batch had completed
+0 of 50 requests 2.4 hours after submission and was still inside its
+window when this draft was built. The 24-hour window is the contract;
+the realized tail is who you are routed to --- which is exactly why
+LazyCode prices the deadline, not the typical case
+(\cref{sec:economics}). And self-reported agent telemetry is not a receipt: the CLI
 reported \$15.84 of list-price usage for sessions the provider actually
 billed at \$3.31 --- a $4.8\times$ overstatement (cache discounts and
 routing below list), which is why every number in
@@ -383,14 +388,33 @@ rejects at parse time. The fix --- try exact apply, fall back to
 0/3 to 3/3 applied and is the first accuracy improvement this system
 can attribute to a receipted production run rather than a code review.
 
-\paragraph{What this still does not show.} The fan-out tier flatters
-the compilation: prompts are small, so the conversation-cache dynamics
-of \cref{sec:economics-width} barely register, and
-\texttt{rounds\_per\_node} stayed 1 by construction on a shape with no
-dependencies. A deep tier (SWE-bench Verified instances, where the
-agent's iteration should be worth the most) and the within-wave
-cache-stacking measurement remain open, as does a second seed;
-\cref{sec:limitations} keeps the full list.
+\paragraph{The deep tier.} The fan-out tier flatters the compilation
+(tiny prompts, no dependencies), so the study's second tier is the shape
+that should favor the agent: ten SWE-bench Verified instances from the
+benchmark's easiest difficulty band (``$<$15 min fix''), real repositories,
+resolution judged by the official docker harness. The single-shot arms
+get the \emph{oracle} retrieval setting --- the problem statement plus
+the one file the reference patch touches, emitting the complete
+corrected file (diffs are computed locally, so models are graded on the
+fix, not on diff syntax) --- while the agent explores the checkout
+itself. The receipts: interactive resolved 6/10 for \$5.69 (15.8 mean
+turns, \$0.95 per resolved instance); sync resolved 8/10 for \$0.258;
+batch resolved \emph{the same} 8/10 for \$0.129 --- 0.500 of sync on the
+invoice, \$0.016 per resolved instance, $59\times$ below the agent's.
+Read fairly: oracle retrieval hands the one-shot arms the located file,
+and locating is part of what the agent's turns pay for; on deeper
+instances than this band the iteration should earn its cost back. But
+the direction is the finding --- on well-scoped work, one compiled call
+with the right context beat fifteen turns of exploration, and the batch
+lane halved it again with an identical resolved set.
+
+\paragraph{What this still does not show.} Within-wave cache stacking
+(\cref{sec:economics-width}) remains unmeasured --- fan-out prompts were
+too small to register it and the deep tier ran one call per instance ---
+and \texttt{rounds\_per\_node} stayed 1 by construction on both tiers.
+One seed per cell; SWE-bench beyond the easiest band, and the
+self-hosted lane, remain open. \Cref{sec:limitations} keeps the full
+list.
 
 \section{Implementation truth}
 \label{sec:implementation}
