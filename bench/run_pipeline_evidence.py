@@ -64,7 +64,7 @@ def dump_tables(repo_root: Path, out: Path) -> dict:
 def fetch_receipts(client: httpx.Client, waves: list[dict]) -> list[dict]:
     receipts = []
     for w in waves:
-        bid = w.get("batch_id")
+        bid = w.get("batch_ref") or w.get("batch_id")
         if not bid:
             continue
         r = client.get(f"/beta/batches/{bid}")
@@ -108,7 +108,7 @@ def write_evidence_md(out: Path, task: str, result: dict, tables: dict,
         "## Waves (plan → provider batches)",
         "",
         "```json",
-        json.dumps([{k: w.get(k) for k in ("id", "batch_id", "idempotency_key",
+        json.dumps([{k: w.get(k) for k in ("id", "batch_ref", "idempotency_key",
                                             "status", "provider")} for w in tables["waves"]],
                    indent=1),
         "```",
