@@ -71,8 +71,8 @@ tail is provider-specific.
 | tier | arm | quality | receipted $ | $/solved | wall |
 |---|---|---|---|---|---|
 | fan-out (HumanEval-50) | agent (Claude Code) | 49/50 | 3.3113 | 0.0676 | 18 s/item |
-| | lazycode-sync | 46/50 | 0.0721 | 0.0016 | 2.2 s/item |
-| | lazycode-batch | 47/50 | 0.0367 | 0.0008 | 8.1 min/wave |
+| | compiled, sync price (ablation) | 46/50 | 0.0721 | 0.0016 | 2.2 s/item |
+| | **LazyCode** (batch lane) | 47/50 | 0.0367 | 0.0008 | 8.1 min/wave |
 | deep (SWE-bench ×10) | agent (Claude Code) | 6/10 | 5.6923 | 0.9487 | 91 s/item |
-| | lazycode-sync | 8/10 | 0.2582 | 0.0323 | 39 s/item |
-| | lazycode-batch | 8/10 | 0.1291 | 0.0161 | 9.6 min/wave |
+| | compiled, sync price (ablation) | 8/10 | 0.2582 | 0.0323 | 39 s/item |
+| | **LazyCode** (batch lane) | 8/10 | 0.1291 | 0.0161 | 9.6 min/wave |

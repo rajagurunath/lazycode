@@ -295,10 +295,11 @@ not list-price arithmetic.
 mechanical verifier across all three. \emph{Interactive}: Claude Code
 headless, one session per task, routed through the same provider ---
 the paper's honest baseline, an agent loop with tool use.
-\emph{Sync}: the LazyCode-shaped single-shot call at full price --- the
-compilation ablation, separating architecture from discount.
-\emph{Batch}: the same calls as one wave through the batch lane --- the
-product. Models are three closed families with a clean 50\% batch lane
+\emph{Compiled-sync}: the ablation control, not a product mode ---
+LazyCode's own compiled single-shot calls executed at the full
+synchronous price, so that the compilation effect and the lane discount
+can be read separately. \emph{LazyCode}: the same calls as one wave
+through the batch lane --- the product. Models are three closed families with a clean 50\% batch lane
 (Claude Haiku 4.5, GPT-5.4-mini, Gemini 3.7 Flash); the fan-out tier is
 HumanEval, a fixed 50-problem subset verified by its own assertion
 suites, with the agent free to iterate and the single-shot arms getting
@@ -307,10 +308,12 @@ generation ids and ledgers are archived in the repository.
 
 \begin{table}[!htbp]
 \centering
-\caption{Fan-out tier (HumanEval subset-50), receipted. ``x/50'' is the
-verifier pass count; \$ is the provider-charged total for all 50
-problems. The batch:sync cost ratio is what the invoice says, not what
-the price page promises.}
+\caption{Fan-out tier (HumanEval subset-50), receipted. ``sync'' and
+``batch'' are the \emph{same} compiled single-shot requests on the two
+price lanes (only ``interactive'' is a different execution model --- the
+agent loop); ``x/50'' is the verifier pass count; \$ is the
+provider-charged total for all 50 problems. The batch:sync cost ratio is
+what the invoice says, not what the price page promises.}
 \label{tab:measured}
 \small
 \begin{tabular}{llrrr}
@@ -398,8 +401,11 @@ fan-out tier, official-harness resolved count on the deep tier.
 ``Wall'' is what one run costs in time: per-item mean for the
 sequential arms, whole-wave turnaround for batch (all items land
 together). The agent buys $+2$ solves on the fan-out tier and
-\emph{loses} two on the deep tier; LazyCode-batch pays 1--2\% of the
-agent's bill on both.}
+\emph{loses} two on the deep tier; LazyCode pays 1--2\% of the
+agent's bill on both. $^{\dagger}$Not a product mode: the ablation
+control --- LazyCode's own compiled calls, byte-identical, executed at
+the full synchronous price so the compilation effect and the lane
+discount can be read separately.}
 \label{tab:headtohead}
 \small
 \begin{tabular}{llrrrr}
@@ -407,12 +413,12 @@ agent's bill on both.}
 tier & arm & quality & receipted \$ & \$/solved & wall \\
 \midrule
 fan-out & agent (Claude Code) & 49/50 & 3.3113 & 0.0676 & 18\,s/item \\
-(HumanEval-50) & lazycode-sync & 46/50 & 0.0721 & 0.0016 & 2.2\,s/item \\
- & lazycode-batch & 47/50 & 0.0367 & 0.0008 & 8.1\,min/wave \\
+(HumanEval-50) & compiled, sync price$^{\dagger}$ & 46/50 & 0.0721 & 0.0016 & 2.2\,s/item \\
+ & \textbf{LazyCode} (batch lane) & 47/50 & 0.0367 & 0.0008 & 8.1\,min/wave \\
 \addlinespace
 deep & agent (Claude Code) & 6/10 & 5.6923 & 0.9487 & 91\,s/item \\
-(SWE-bench $\times$10) & lazycode-sync & 8/10 & 0.2582 & 0.0323 & 39\,s/item \\
- & lazycode-batch & 8/10 & 0.1291 & 0.0161 & 9.6\,min/wave \\
+(SWE-bench $\times$10) & compiled, sync price$^{\dagger}$ & 8/10 & 0.2582 & 0.0323 & 39\,s/item \\
+ & \textbf{LazyCode} (batch lane) & 8/10 & 0.1291 & 0.0161 & 9.6\,min/wave \\
 \bottomrule
 \end{tabular}
 \end{table}
