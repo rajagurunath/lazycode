@@ -389,6 +389,34 @@ rejects at parse time. The fix --- try exact apply, fall back to
 0/3 to 3/3 applied and is the first accuracy improvement this system
 can attribute to a receipted production run rather than a code review.
 
+
+\begin{table}[!htbp]
+\centering
+\caption{Online agent vs.\ LazyCode, head to head (Claude Haiku 4.5,
+receipted). ``Quality'' is the verifier: HumanEval pass count on the
+fan-out tier, official-harness resolved count on the deep tier.
+``Wall'' is what one run costs in time: per-item mean for the
+sequential arms, whole-wave turnaround for batch (all items land
+together). The agent buys $+2$ solves on the fan-out tier and
+\emph{loses} two on the deep tier; LazyCode-batch pays 1--2\% of the
+agent's bill on both.}
+\label{tab:headtohead}
+\small
+\begin{tabular}{llrrrr}
+\toprule
+tier & arm & quality & receipted \$ & \$/solved & wall \\
+\midrule
+fan-out & agent (Claude Code) & 49/50 & 3.3113 & 0.0676 & 18\,s/item \\
+(HumanEval-50) & lazycode-sync & 46/50 & 0.0721 & 0.0016 & 2.2\,s/item \\
+ & lazycode-batch & 47/50 & 0.0367 & 0.0008 & 8.1\,min/wave \\
+\addlinespace
+deep & agent (Claude Code) & 6/10 & 5.6923 & 0.9487 & 91\,s/item \\
+(SWE-bench $\times$10) & lazycode-sync & 8/10 & 0.2582 & 0.0323 & 39\,s/item \\
+ & lazycode-batch & 8/10 & 0.1291 & 0.0161 & 9.6\,min/wave \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \paragraph{The deep tier.} The fan-out tier flatters the compilation
 (tiny prompts, no dependencies), so the study's second tier is the shape
 that should favor the agent: ten SWE-bench Verified instances from the
@@ -402,6 +430,7 @@ itself. The receipts: interactive resolved 6/10 for \$5.69 (15.8 mean
 turns, \$0.95 per resolved instance); sync resolved 8/10 for \$0.258;
 batch resolved \emph{the same} 8/10 for \$0.129 --- 0.500 of sync on the
 invoice, \$0.016 per resolved instance, $59\times$ below the agent's.
+\Cref{tab:headtohead} puts the two tiers side by side.
 Read fairly: oracle retrieval hands the one-shot arms the located file,
 and locating is part of what the agent's turns pay for; on deeper
 instances than this band the iteration should earn its cost back. But

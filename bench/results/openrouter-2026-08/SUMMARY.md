@@ -65,3 +65,14 @@ Resolution via the official harness (docker, x86 images under emulation):
 anthropic 8 min · google ~7 min · openai 209 min (3.5 h) — a 25×
 spread on one workload. The 24 h window is the contract; the realized
 tail is provider-specific.
+
+## Head-to-head: online agent vs LazyCode (Haiku 4.5, receipted)
+
+| tier | arm | quality | receipted $ | $/solved | wall |
+|---|---|---|---|---|---|
+| fan-out (HumanEval-50) | agent (Claude Code) | 49/50 | 3.3113 | 0.0676 | 18 s/item |
+| | lazycode-sync | 46/50 | 0.0721 | 0.0016 | 2.2 s/item |
+| | lazycode-batch | 47/50 | 0.0367 | 0.0008 | 8.1 min/wave |
+| deep (SWE-bench ×10) | agent (Claude Code) | 6/10 | 5.6923 | 0.9487 | 91 s/item |
+| | lazycode-sync | 8/10 | 0.2582 | 0.0323 | 39 s/item |
+| | lazycode-batch | 8/10 | 0.1291 | 0.0161 | 9.6 min/wave |
