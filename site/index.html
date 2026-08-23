@@ -291,6 +291,30 @@ footer{padding:70px 0 54px;background:#161107;border-top:1px solid rgba(255,255,
   section{padding:80px 0}
   .manifesto{padding:110px 0 90px}
 }
+
+/* ---- pipeline (animated Figure 2) ---- */
+#pipeline .pl-board{background:var(--night);border:1px solid var(--line);border-radius:14px;padding:26px 22px 18px;margin-top:34px}
+.pl-row{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;margin-bottom:14px}
+.pl-rowlab{flex-basis:100%;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:2px 0 2px}
+.pl-stage{position:relative;flex:1 1 120px;min-width:118px;border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--surface);opacity:.42;transform:translateY(2px);transition:opacity .45s,transform .45s,border-color .45s,box-shadow .45s}
+.pl-stage b{display:block;font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--text)}
+.pl-stage span{display:block;font-size:12.5px;color:var(--dim);margin-top:3px;line-height:1.45}
+.pl-stage.rt.on{border-color:var(--amber);box-shadow:0 0 18px rgba(229,164,76,.14)}
+.pl-stage.bt.on{border-color:var(--fern);box-shadow:0 0 18px rgba(169,199,155,.12)}
+.pl-stage.nt.on{border-color:var(--dim)}
+.pl-stage.on{opacity:1;transform:none}
+.pl-stage .pl-w{position:absolute;top:-9px;right:8px;font-family:var(--mono);font-size:10px;color:var(--dawn);background:var(--night);padding:0 5px;border:1px solid var(--dawn);border-radius:5px;opacity:0;transition:opacity .4s}
+.pl-stage.on .pl-w{opacity:1}
+.pl-stage.dimmed{border-style:dashed;opacity:.30}
+.pl-stage.dimmed.on{opacity:.55;border-color:var(--faint);box-shadow:none}
+.pl-note{flex-basis:100%;font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right;margin-top:-4px}
+.pl-barrier{flex-basis:100%;border-top:1px dashed var(--fern-dim);margin:4px 0 2px;position:relative}
+.pl-barrier em{position:absolute;right:0;top:-9px;font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--fern-dim);background:var(--night);padding:0 6px}
+.pl-log{margin-top:16px;border:1px solid var(--line);border-radius:9px;background:var(--ink);padding:10px 14px;font-family:var(--mono);font-size:12px;color:var(--ok);min-height:38px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-log .cur{color:var(--amber-soft)}
+.pl-caption{font-size:13px;color:var(--faint);margin-top:10px}
+@media (prefers-reduced-motion:reduce){.pl-stage{opacity:1;transform:none}}
+
 </style>
 </head>
 <body>
@@ -302,6 +326,7 @@ footer{padding:70px 0 54px;background:#161107;border-top:1px solid rgba(255,255,
     <a href="#" class="wordmark" aria-label="lazycode home"><span class="lazy">lazy</span>code</a>
     <div class="nav-links">
       <a href="#how">how it works</a>
+      <a href="#pipeline">pipeline</a>
       <a href="#economics">economics</a>
       <a href="#durability">durability</a>
       <a href="#quickstart">quickstart</a>
@@ -477,6 +502,49 @@ footer{padding:70px 0 54px;background:#161107;border-top:1px solid rgba(255,255,
           <text class="op" x="728" y="152">Reduce</text><text x="728" y="170">branch + report</text><text x="728" y="184" fill="#8fd9b0">✓ by 06:12</text></g>
       </svg>
       <p class="hint">independent nodes ride the same wave — one batch call, fifty files</p>
+    </div>
+  </div>
+</section>
+
+
+<section id="pipeline">
+  <div class="wrap">
+    <p class="sec-eyebrow reveal">the pipeline</p>
+    <h2 class="reveal">One goal, end to end.</h2>
+    <p class="sec-sub reveal">This is Figure&nbsp;2 of the paper, running. Follow one goal through the machine: a single realtime call thinks, everything below it executes at batch prices, and every transition is written to the event log <em>before</em> its side effect — which is why a crash anywhere resumes instead of re-paying.</p>
+
+    <div class="pl-board reveal" id="pl-board" aria-label="Animated LazyCode pipeline: plan, optimize, wave loop over batch providers, apply and verify, all recorded in an append-only event log">
+      <div class="pl-row">
+        <div class="pl-rowlab">compile — the only online-priced call</div>
+        <div class="pl-stage rt" id="pl-goal"><b>user goal</b><span>"add type hints to services/"</span></div>
+        <div class="pl-stage rt" id="pl-plan"><b>planner</b><span>realtime model emits a typed plan; schema-checked, 3 retries</span></div>
+        <div class="pl-stage nt" id="pl-dag"><b>logical plan</b><span>a DAG of 8 operators — unique ids, acyclic, deps resolvable</span></div>
+        <div class="pl-stage nt" id="pl-opt"><b>optimizer</b><span>push work local · prune context · never pay for the same call twice</span></div>
+        <div class="pl-stage nt" id="pl-phys"><b>physical plan</b><span>layer by dependency; group by (provider, model)</span></div>
+        <div class="pl-note">no LLM calls below this line</div>
+      </div>
+
+      <div class="pl-row">
+        <div class="pl-rowlab">wave loop — batch-priced, barrier-synchronised</div>
+        <div class="pl-stage bt" id="pl-front"><b>ready frontier</b><span>every node whose deps are done</span></div>
+        <div class="pl-stage bt" id="pl-memo"><b>memo filter</b><span>seen this exact call before? never re-bill it</span></div>
+        <div class="pl-stage bt" id="pl-formed"><b>wave formed</b><span>key + items logged <i>before</i> any money moves</span><i class="pl-w">W1</i></div>
+        <div class="pl-stage bt" id="pl-submit"><b>submitted</b><span>one wave = one provider batch, half price</span><i class="pl-w">W2</i></div>
+        <div class="pl-stage bt" id="pl-poll"><b>poll · fetch</b><span>results processed item by item</span><i class="pl-w">W3</i></div>
+        <div class="pl-barrier"><em>barrier: next frontier forms only when this wave is fully terminal</em></div>
+        <div class="pl-stage nt" id="pl-prov"><b>providers</b><span>Anthropic batches · OpenAI-compatible batches · self-hosted: <a href="https://github.com/rajagurunath/tidal" style="color:var(--fern)">Tidal</a></span></div>
+      </div>
+
+      <div class="pl-row">
+        <div class="pl-rowlab">land — free, local, deterministic</div>
+        <div class="pl-stage nt" id="pl-work"><b>worktree</b><span>diff → path allow-list → 3-way apply → ledger</span></div>
+        <div class="pl-stage nt" id="pl-verify"><b>verify</b><span>your test command; failure is data, not an exception</span></div>
+        <div class="pl-stage bt" id="pl-done"><b>done</b><span>branches, a report, an assumption ledger by morning</span></div>
+        <div class="pl-stage dimmed" id="pl-repair"><b>repair · gate</b><span>designed, not live yet — the paper says so too</span></div>
+      </div>
+
+      <div class="pl-log" id="pl-log" aria-live="off">event log · append-only · the source of truth</div>
+      <p class="pl-caption">W1–W3 mark the crash windows: formed-not-submitted adopts its own paid batch by key; submitted re-polls, never re-submits; completed replays idempotently. Solid boxes are shipped code; the dashed box is designed only.</p>
     </div>
   </div>
 </section>
@@ -697,6 +765,66 @@ lazycode review jb_7f3a</pre>
     });
   });
 })();
+
+  /* ---- pipeline animation (Figure 2, live) ---- */
+  (function(){
+    var seq = [
+      ['pl-goal','JOB_CREATED'],
+      ['pl-plan','PLAN_PROPOSED'],
+      ['pl-dag','PLAN_APPROVED'],
+      ['pl-opt','PLAN_OPTIMIZED'],
+      ['pl-phys','NODES_LOWERED'],
+      ['pl-front','NODE_READY \u00d7 12'],
+      ['pl-memo','NODE_HARVESTED \u00d7 12'],
+      ['pl-formed','WAVE_FORMED (idempotency key logged)'],
+      ['pl-submit','WAVE_SUBMITTED (one batch, half price)'],
+      ['pl-prov','\u2026 the night passes \u2026'],
+      ['pl-poll','ITEM_RETURNED \u00d7 12 \u00b7 WAVE_COMPLETED'],
+      ['pl-work','ARTIFACT_APPLIED \u00d7 12'],
+      ['pl-verify','VERIFY_RESULT: passed'],
+      ['pl-done','JOB_DONE \u00b7 193 s \u00b7 receipt $0.00309']
+    ];
+    var board = document.getElementById('pl-board');
+    if (!board) return;
+    var log = document.getElementById('pl-log');
+    var trail = [];
+    function setLog(cur){
+      trail.push(cur);
+      if (trail.length > 3) trail.shift();
+      var head = trail.slice(0,-1).join(' \u00b7 ');
+      log.innerHTML = (head ? head + ' \u00b7 ' : '') + '<span class="cur">' + cur + '</span>';
+    }
+    function reset(){
+      seq.forEach(function(p){ var el = document.getElementById(p[0]); if (el) el.classList.remove('on'); });
+      trail = [];
+    }
+    if (reduced) {
+      seq.forEach(function(p){ var el = document.getElementById(p[0]); if (el) el.classList.add('on'); });
+      log.textContent = 'JOB_CREATED \u00b7 \u2026 \u00b7 VERIFY_RESULT: passed \u00b7 JOB_DONE \u00b7 193 s \u00b7 receipt $0.00309';
+      return;
+    }
+    var i = 0, running = false;
+    function step(){
+      if (i >= seq.length) {
+        setTimeout(function(){ reset(); i = 0; setTimeout(step, 700); }, 3600);
+        return;
+      }
+      var p = seq[i];
+      var el = document.getElementById(p[0]);
+      if (el) el.classList.add('on');
+      setLog(p[1]);
+      var dwell = (p[0] === 'pl-prov') ? 1700 : 950;
+      i++;
+      setTimeout(step, dwell);
+    }
+    var plObs = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if (e.isIntersecting && !running) { running = true; step(); plObs.disconnect(); }
+      });
+    }, {threshold: .25});
+    plObs.observe(board);
+  })();
+
 </script>
 </body>
 </html>
