@@ -21,3 +21,4 @@ bench/results/openrouter-2026-08/t2/
 bench/results/openrouter-2026-08/t3-pipeline/*/workdir/
 !bench/results/openrouter-2026-08/SUMMARY.md
 .gstack/
+docs/paper/latex/main.pdf

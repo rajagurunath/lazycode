@@ -14,7 +14,7 @@ footnote must be removed and the PDF rebuilt.**
 
 | Purpose | File |
 |---|---|
-| Preprint PDF (upload this) | `docs/paper/lazycode-paper.pdf` (17 pp) |
+| Preprint PDF (upload this) | `docs/paper/lazycode-paper.pdf` (20 pp — current draft with §Measured economics; Zenodo still serves v1 until the next version is published) |
 | LaTeX sources | `docs/paper/latex/` |
 
 ## Title
