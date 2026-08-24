@@ -64,7 +64,7 @@ CC BY 4.0
 
 ## Related identifiers
 
-- Companion paper: Tidal — A Deadline-Contracted Batch Tier for Unmodified LLM
+- Companion paper: Tidal — Co-Serving Online and Batch LLM Traffic under Deadline
   Serving Engines, https://github.com/rajagurunath/tidal (add Tidal's DOI once
   it has one)
 - Code: add repo URL only after the repo is pushed/public (see gate above)
