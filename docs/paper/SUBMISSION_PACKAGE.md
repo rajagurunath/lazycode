@@ -65,8 +65,7 @@ CC BY 4.0
 ## Related identifiers
 
 - Companion paper: Tidal — Co-Serving Online and Batch LLM Traffic under
-  Deadline Contracts, https://github.com/rajagurunath/tidal (add Tidal's DOI once
-  it has one)
+  Deadline Contracts, https://github.com/rajagurunath/tidal, DOI 10.5281/zenodo.21905461
 - Code: add repo URL only after the repo is pushed/public (see gate above)
 
 ## Notes / disclosures
