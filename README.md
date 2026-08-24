@@ -6,6 +6,24 @@
 
 Not a pair programmer — the night shift. Point it at backlog burn-down (test coverage, migrations, lint eradication, mass refactors), close your laptop, review branches in the morning.
 
+![One goal compiled into a batch: plan, decompose, harvest, run overnight, verify, apply](docs/assets/pipeline.gif)
+
+*(Figure 2 of the paper, animated on the [landing page](https://rajagurunath.github.io/lazycode/).)*
+
+## Does it pay? (measured, not derived)
+
+We ran the same tasks three ways and kept the provider receipts (a receipted study over a public batch lane, three closed model families):
+
+| tier | arm | quality | receipted $ | $/solved |
+|---|---|---|---|---|
+| HumanEval-50 | Claude Code agent | 49/50 | 3.31 | 0.0676 |
+| | compiled call, sync price | 46/50 | 0.072 | 0.0016 |
+| | **LazyCode (batch lane)** | 47/50 | 0.037 | 0.0008 |
+| SWE-bench ×10 | Claude Code agent | 6/10 | 5.69 | 0.949 |
+| | **LazyCode (batch lane)** | 8/10 | 0.129 | 0.016 |
+
+The compiled plan cost **~46× less** than the same model driven by an interactive agent; the batch lane halved that again (receipted 0.49–0.51 across families), for **~90×** blended. On the harder tier LazyCode resolved *more* issues than the agent at **59× lower cost per fix**. Details in the paper's "Measured economics" section and `bench/results/`.
+
 Status: pre-alpha, milestone M0 complete. Full design: [docs/DESIGN.md](docs/DESIGN.md) · Landing page: [rajagurunath.github.io/lazycode](https://rajagurunath.github.io/lazycode/).
 
 ## Quickstart
@@ -41,7 +59,7 @@ What works today, end to end, verified by the test suite:
 - `lazycode resume <job-id>` — reopens the store and drives an interrupted job to completion; **crash-safe**: `kill -9` mid-wave then `resume` does not double-submit the batch or double-apply the diff (event-sourced replay + the applied-diff ledger, DESIGN.md §7.1/§9). Covered by `tests/e2e/test_crash_resume.py`.
 - `lazycode daemon` — foreground-only single-writer daemon; `run` hands jobs to it over HTTP when it's up (`--background` is not implemented in M0 — run it under launchd/systemd/tmux instead).
 - Multi-file fan-out — independent `Generate` nodes land in one wave (`tests/e2e/test_happy_path.py`); optimizer is R1/R2 only (local pushdown + context pruning), no model tiering or speculation yet.
-- Benchmark harness (`bench/`) — three fixture-repo tasks, lazycode-vs-Claude-Code-CLI token comparison, `<50%` verdict (Appendix B7).
+- Benchmark harness (`bench/`) — fixture-repo tasks plus standard-benchmark tiers (HumanEval, SWE-bench Verified) run three ways (interactive agent / compiled-sync / batch) with **real provider receipts**, not list-price arithmetic (see "Does it pay?" above and `bench/results/`).
 
 What doesn't work yet (by design — later milestones, Appendix B11):
 
@@ -49,6 +67,6 @@ What doesn't work yet (by design — later milestones, Appendix B11):
 - No cost estimate in the pre-flight prompt (plan tree + y/N only), no `explain analyze`, no cost/slider-driven optimizer beyond R1/R2 (M2).
 - No hedging or deadline-aware fallback to realtime (M2), no speculation/vectorization (M4).
 - No web UI, no desktop/Slack notifications (log line only), no `watch` TUI (M3).
-- Two batch providers (Anthropic, plus the OpenAI-compatible `openai-batch`/`selfhost` adapter for api.openai.com or a self-hosted vLLM/Tidal gateway) + realtime planner. Still missing: Gemini, webhook-first delivery, and provider failover with Caps re-validation (M4).
+- Three batch adapters: Anthropic Message Batches, the OpenAI-compatible `openai-batch`/`selfhost` adapter (api.openai.com or a self-hosted vLLM/Tidal gateway), and an OpenRouter beta-batch adapter (`openrouter_batch.py`) that reaches Claude, GPT, Gemini and more through one wire — plus the realtime planner. Still missing: webhook-first delivery and provider failover with Caps re-validation (M4).
 - `--background` daemon mode, `merge`/`cancel` commands, and GitHub Actions best-effort runner are all unimplemented (M1/M2).
 - Memo-key sharing across duplicate nodes (by design): two distinct nodes that render *byte-identical* prompts share one R10 memo entry — the second is served from cache and, its identical diff being already in the applied-diff ledger, is marked DONE without a second apply. Since the rendered prompt embeds the node's spec, harvested files, and contract globs, identical prompts always mean identical requested work at M0's `temperature=0.0`/`sample_idx=0`; deliberate N-best sampling of one prompt gets distinct `sample_idx` values in M4 (DESIGN.md §5.2 R7/R10).
